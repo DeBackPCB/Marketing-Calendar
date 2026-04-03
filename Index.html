@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>PCB Marketing Calendar</title>
+<link rel="icon" type="image/png" href="https://mcusercontent.com/b8b83227231f2f0e26759641f/images/f4d5c084-3240-de4a-6231-962425e66050.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -1212,9 +1213,9 @@ function renderList(){
   const filtered=getFiltered(),container=document.getElementById('listView');
   const today=new Date();today.setHours(0,0,0,0);
   if(!filtered.length){container.innerHTML=empty();return;}
-  // In sales view, sort completed events to the bottom
+  // In sales view, filter out completed events entirely
   const sorted = mode==='sales'
-    ? [...filtered.filter(e=>e.status!=='Completed'), ...filtered.filter(e=>e.status==='Completed')]
+    ? filtered.filter(e=>e.status!=='Completed')
     : filtered;
   const groups={};
   sorted.forEach(e=>{const d=new Date((e.runDate||e.date)+'T00:00:00'),k=d.toLocaleString('default',{month:'long',year:'numeric'});(groups[k]=groups[k]||[]).push(e);});
