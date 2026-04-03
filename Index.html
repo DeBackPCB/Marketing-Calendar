@@ -1213,9 +1213,9 @@ function renderList(){
   const filtered=getFiltered(),container=document.getElementById('listView');
   const today=new Date();today.setHours(0,0,0,0);
   if(!filtered.length){container.innerHTML=empty();return;}
-  // In sales view, filter out completed events entirely
+  // In sales view, filter out completed events and past events
   const sorted = mode==='sales'
-    ? filtered.filter(e=>e.status!=='Completed')
+    ? filtered.filter(e=>e.status!=='Completed' && new Date((e.runDate||e.date)+'T00:00:00')>=today)
     : filtered;
   const groups={};
   sorted.forEach(e=>{const d=new Date((e.runDate||e.date)+'T00:00:00'),k=d.toLocaleString('default',{month:'long',year:'numeric'});(groups[k]=groups[k]||[]).push(e);});
