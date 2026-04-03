@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PCB Marketing Calendar</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --red:#c8102e;--red-dark:#a00d24;--cream:#fdf8f2;--warm-white:#fff9f3;
+  --brown-dark:#1a0a05;--brown-mid:#5c3d22;--brown-light:#a0714f;
+  --caramel:#c8874a;--gold:#e8a44a;--gold-light:#f5c97a;
+  --border:#e8ddd0;--shadow:rgba(44,26,14,.09);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--brown-dark);min-height:100vh;}
+
+/* HEADER */
+.header{background:var(--red-dark);padding:0 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid var(--gold);flex-wrap:wrap;min-height:66px;gap:8px;}
+.header-left{display:flex;align-items:center;height:66px;}
+.logo-band{background:white;height:100%;padding:0 16px;display:flex;align-items:center;margin-right:16px;}
+.logo-band img{height:36px;display:block;}
+.header-title{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:900;color:white;line-height:1;}
+.header-sub{font-size:.6rem;color:rgba(255,255,255,.5);letter-spacing:.16em;text-transform:uppercase;margin-top:3px;}
+.header-right{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:10px 0;}
+
+/* MODE TOGGLE */
+.mode-toggle{display:flex;background:rgba(0,0,0,.28);border-radius:8px;padding:3px;gap:2px;}
+.mode-btn{background:transparent;border:none;color:rgba(255,255,255,.48);padding:6px 13px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.74rem;font-weight:700;display:flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap;}
+.mode-btn svg{width:13px;height:13px;}
+.mode-btn.active{background:white;color:var(--red-dark);}
+.mode-btn:not(.active):hover{color:white;}
+
+/* VIEW TOGGLE */
+.view-toggle{display:flex;background:rgba(0,0,0,.2);border-radius:7px;padding:3px;gap:2px;}
+.vt-btn{background:transparent;border:none;color:rgba(255,255,255,.48);padding:5px 11px;border-radius:5px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.73rem;font-weight:600;display:flex;align-items:center;gap:4px;transition:all .2s;}
+.vt-btn svg{width:12px;height:12px;}
+.vt-btn.active{background:var(--gold);color:var(--brown-dark);}
+.vt-btn:not(.active):hover{color:white;}
+
+.add-btn{background:var(--gold);color:var(--brown-dark);border:none;padding:8px 15px;border-radius:6px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:.8rem;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background .2s,transform .15s;}
+.add-btn:hover{background:var(--gold-light);transform:translateY(-1px);}
+.add-btn svg{width:13px;height:13px;}
+.ghost-btn{background:transparent;color:rgba(255,255,255,.78);border:1.5px solid rgba(255,255,255,.2);padding:7px 12px;border-radius:6px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:.76rem;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;}
+.ghost-btn:hover{border-color:var(--gold-light);color:var(--gold-light);}
+.ghost-btn svg{width:13px;height:13px;}
+.sales-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.68);font-size:.65rem;font-weight:700;padding:5px 12px;border-radius:20px;letter-spacing:.07em;text-transform:uppercase;}
+
+/* FILTERS */
+.filters-bar{background:var(--warm-white);border-bottom:1px solid var(--border);padding:9px 28px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.filter-label{font-size:.66rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--brown-light);white-space:nowrap;}
+.filter-pill{padding:4px 10px;border-radius:20px;border:1.5px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:.71rem;font-weight:500;color:var(--brown-mid);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.filter-pill:hover,.filter-pill.active{background:var(--red-dark);border-color:var(--red-dark);color:white;}
+.filter-sep{width:1px;height:15px;background:var(--border);flex-shrink:0;}
+.search-input{margin-left:auto;padding:5px 12px;border:1.5px solid var(--border);border-radius:20px;background:white;font-family:'DM Sans',sans-serif;font-size:.76rem;color:var(--brown-dark);outline:none;width:168px;transition:border-color .2s;}
+.search-input:focus{border-color:var(--red);}
+.search-input::placeholder{color:#bbb;}
+
+/* MAIN */
+.main{padding:20px 28px;max-width:1180px;margin:0 auto;}
+
+/* UPCOMING BANNER */
+.upcoming-bar{background:var(--red-dark);color:white;border-radius:10px;padding:13px 19px;margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.upcoming-bar svg{width:19px;height:19px;flex-shrink:0;opacity:.75;}
+.upcoming-bar-label{font-size:.61rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;opacity:.62;margin-bottom:2px;}
+.upcoming-bar-title{font-size:.9rem;font-weight:700;}
+.upcoming-bar-meta{font-size:.71rem;opacity:.62;margin-top:1px;}
+.upcoming-bar-badge{background:var(--gold);color:var(--brown-dark);font-size:.65rem;font-weight:700;padding:4px 12px;border-radius:20px;white-space:nowrap;margin-left:auto;}
+
+/* STATS */
+.stats-row{display:flex;gap:9px;margin-bottom:18px;flex-wrap:wrap;}
+.stat-card{background:white;border:1.5px solid var(--border);border-radius:9px;padding:10px 14px;display:flex;align-items:center;gap:9px;flex:1;min-width:104px;transition:border-color .15s,box-shadow .15s;}
+.stat-card-active{border-color:var(--red) !important;box-shadow:0 0 0 2px rgba(200,16,46,.12);}
+.stat-icon{width:29px;height:29px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.stat-icon svg{width:14px;height:14px;}
+.stat-num{font-family:'Playfair Display',serif;font-size:1.28rem;font-weight:900;color:var(--brown-dark);line-height:1;}
+.stat-lbl{font-size:.61rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--brown-light);margin-top:1px;}
+
+/* LIST */
+.month-group{margin-bottom:24px;}
+.month-heading{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.month-label{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;color:var(--brown-dark);}
+.month-count{background:var(--red-dark);color:white;font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:10px;}
+.month-line{flex:1;height:1px;background:var(--border);}
+
+/* MANAGER CARD */
+.mgr-card{background:white;border:1.5px solid var(--border);border-radius:9px;padding:11px 15px;margin-bottom:7px;display:grid;grid-template-columns:44px 1fr auto;gap:11px;align-items:start;transition:box-shadow .2s,border-color .2s;}
+.mgr-card:hover{box-shadow:0 4px 13px var(--shadow);border-color:var(--caramel);}
+.mgr-card.completed{opacity:.5;background:#fafaf8;}
+.mgr-card.completed .event-title{text-decoration:line-through;color:#999;}
+
+/* SALES CARD */
+.sales-card{background:white;border:1.5px solid var(--border);border-radius:9px;padding:12px 15px;margin-bottom:7px;display:grid;grid-template-columns:48px 1fr 18px;gap:12px;align-items:center;cursor:pointer;transition:box-shadow .2s,border-color .2s;}
+.sales-card:hover{box-shadow:0 4px 13px var(--shadow);border-color:var(--caramel);}
+.sales-card.past{opacity:.46;}
+.arrow-col{color:var(--border);}
+.arrow-col svg{width:15px;height:15px;}
+
+/* SHARED CARD PARTS */
+.date-block{text-align:center;background:var(--cream);border-radius:6px;padding:5px 3px;border:1px solid var(--border);}
+.date-month{font-size:.53rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--red);}
+.date-day{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:var(--brown-dark);line-height:1.1;}
+.event-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px;}
+.event-title{font-weight:600;font-size:.88rem;color:var(--brown-dark);line-height:1.3;}
+.type-badge{font-size:.57rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 6px;border-radius:9px;white-space:nowrap;}
+.event-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:.7rem;color:var(--brown-light);margin-top:2px;}
+.submitter-byline{font-size:.68rem;color:var(--brown-light);font-style:italic;}
+.run-label{font-weight:700;color:var(--red);}
+.event-notes{margin-top:3px;font-size:.73rem;color:#999;line-height:1.42;font-style:italic;}
+.status-chip{font-size:.57rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 6px;border-radius:9px;}
+.status-draft{background:#f0f0ee;color:#999;}
+.status-in-review{background:#fffbf0;color:#a07020;}
+.status-published{background:#eef8f2;color:#2d7a4f;}
+.status-completed{background:#2d7a4f;color:white;}
+.shared-badge{font-size:.57rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:9px;background:#e8f4fd;color:#1565c0;border:1px solid #bbdefb;white-space:nowrap;}
+.sales-submitted-badge{font-size:.57rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:9px;background:#fff3e0;color:#e65100;border:1px solid #ffe0b2;white-space:nowrap;}
+.share-btn{display:flex;align-items:center;gap:4px;font-size:.67rem;font-weight:700;padding:4px 9px;border-radius:6px;border:1.5px solid var(--border);background:white;color:var(--brown-light);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.share-btn:hover{border-color:#1565c0;color:#1565c0;background:#e8f4fd;}
+.share-btn.shared{border-color:#1565c0;color:#1565c0;background:#e8f4fd;}
+.share-btn svg{width:11px;height:11px;}
+.date-range{font-size:.7rem;color:var(--brown-light);}
+
+/* FILE ICONS IN LIST VIEW */
+.file-icons-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:6px;}
+.file-icon-chip{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--cream);border:1.5px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;transition:all .15s;min-width:52px;max-width:72px;position:relative;}
+.file-icon-chip:hover{border-color:var(--red);background:#fff8f8;}
+.file-icon-chip .fi-icon{font-size:1.3rem;line-height:1;}
+.file-icon-chip .fi-name{font-size:.55rem;font-weight:600;color:var(--brown-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;text-align:center;max-width:60px;}
+.file-icon-chip .fi-del{position:absolute;top:-5px;right:-5px;width:14px;height:14px;background:#c0392b;color:white;border-radius:50%;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:.6rem;line-height:1;}
+.file-icon-chip:hover .fi-del{display:flex;}
+
+/* ATTACHMENTS (chip style, kept for popover/detail) */
+.attach-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:5px;}
+.attach-chip{display:flex;align-items:center;gap:4px;background:var(--cream);border:1.5px solid var(--border);border-radius:5px;padding:3px 7px;font-size:.65rem;font-weight:600;color:var(--brown-mid);cursor:pointer;transition:all .15s;max-width:175px;}
+.attach-chip:hover{border-color:var(--red);color:var(--red);}
+.attach-chip svg{width:10px;height:10px;flex-shrink:0;}
+.attach-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.attach-del{margin-left:2px;color:#ccc;cursor:pointer;flex-shrink:0;}
+.attach-del:hover{color:#c0392b;}
+.attach-del svg{width:9px;height:9px;display:block;}
+.attach-indicator{display:flex;align-items:center;gap:3px;font-size:.65rem;color:var(--brown-light);}
+.attach-indicator svg{width:11px;height:11px;}
+
+/* MGR ACTIONS */
+.event-actions{display:flex;flex-direction:column;align-items:flex-end;gap:5px;}
+.status-select{appearance:none;background:var(--cream);border:1.5px solid var(--border);border-radius:5px;padding:3px 7px;font-family:'DM Sans',sans-serif;font-size:.67rem;font-weight:600;color:var(--brown-dark);cursor:pointer;outline:none;min-width:100px;text-align:center;}
+.status-select.status-draft{border-color:#ddd;color:#888;}
+.status-select.status-in-review{border-color:var(--gold);background:#fffbf0;color:#a07020;}
+.status-select.status-published{border-color:#2d7a4f;background:#eef8f2;color:#2d7a4f;}
+.status-select.status-completed{border-color:#2d7a4f;background:#2d7a4f;color:white;}
+.priority-badge{font-size:.57rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:2px 6px;border-radius:9px;white-space:nowrap;}
+.priority-high{background:#fde8e6;color:#c0392b;}
+.priority-medium{background:#fdf0e2;color:var(--caramel);}
+.priority-low{background:#f0f0ee;color:#999;}
+.action-btns{display:flex;gap:4px;}
+.icon-btn{width:24px;height:24px;border:1.5px solid var(--border);border-radius:5px;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;color:var(--brown-light);}
+.icon-btn:hover{border-color:var(--caramel);color:var(--caramel);}
+.icon-btn.delete:hover{border-color:#c0392b;color:#c0392b;}
+.icon-btn svg{width:11px;height:11px;}
+
+/* CAL GRID */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.cal-nav-title{font-family:'Playfair Display',serif;font-size:1.18rem;font-weight:900;color:var(--brown-dark);}
+.cal-nav-btns{display:flex;gap:5px;}
+.cal-nav-btn{background:white;border:1.5px solid var(--border);border-radius:6px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--brown-mid);transition:all .15s;}
+.cal-nav-btn:hover{border-color:var(--red);color:var(--red);}
+.cal-nav-btn svg{width:12px;height:12px;}
+.cal-today-btn{background:white;border:1.5px solid var(--border);border-radius:6px;padding:0 11px;height:28px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.71rem;font-weight:600;color:var(--brown-mid);transition:all .15s;}
+.cal-today-btn:hover{border-color:var(--red);color:var(--red);}
+.cal-grid-wrap{background:white;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;}
+.cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);background:var(--red-dark);}
+.cal-dow{padding:7px 4px;text-align:center;font-size:.61rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.78);}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-cell{border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:104px;padding:5px;transition:background .15s;cursor:pointer;}
+.cal-cell:nth-child(7n){border-right:none;}
+.cal-cell.other-month{background:#faf7f3;}
+.cal-cell.other-month .cal-day-num{color:#ccc;}
+.cal-cell.today{background:#fff8f8;}
+.cal-cell.today .cal-day-num{background:var(--red-dark);color:white;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:700;}
+.cal-cell:hover{background:#fdf4ea;}
+.cal-day-num{font-size:.73rem;font-weight:600;color:var(--brown-mid);margin-bottom:3px;min-height:20px;display:flex;align-items:center;}
+.cal-pill{font-size:.6rem;font-weight:600;padding:2px 4px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.35;}
+.cal-pill:hover{opacity:.75;}
+.cal-more{font-size:.59rem;color:var(--brown-light);font-weight:600;padding:1px 3px;}
+.cal-more:hover{color:var(--red);}
+
+/* POPOVER */
+.popover{position:fixed;background:white;border:1.5px solid var(--border);border-radius:9px;padding:12px 14px;width:268px;box-shadow:0 8px 26px rgba(44,26,14,.17);z-index:500;animation:popIn .14s ease;}
+@keyframes popIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.popover-close{position:absolute;top:8px;right:8px;border:none;background:none;cursor:pointer;color:#ccc;}
+.popover-close:hover{color:#999;}
+.popover-close svg{width:12px;height:12px;display:block;}
+.popover-title{font-weight:700;font-size:.84rem;color:var(--brown-dark);margin-bottom:4px;line-height:1.3;padding-right:17px;}
+.popover-meta{font-size:.69rem;color:var(--brown-light);display:flex;gap:5px;flex-wrap:wrap;margin-bottom:3px;}
+.popover-actions{display:flex;gap:5px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+.pop-btn{flex:1;padding:5px;border-radius:5px;font-family:'DM Sans',sans-serif;font-size:.71rem;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:white;color:var(--brown-mid);transition:all .15s;text-align:center;}
+.pop-btn:hover{border-color:var(--caramel);color:var(--caramel);}
+.pop-btn.danger:hover{border-color:#c0392b;color:#c0392b;}
+.pop-btn.primary{background:var(--red-dark);border-color:var(--red-dark);color:white;}
+.pop-btn.primary:hover{background:var(--red);}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:48px 20px;color:var(--brown-light);}
+.empty-state svg{width:38px;height:38px;opacity:.18;margin-bottom:9px;}
+.empty-state p{font-size:.83rem;}
+
+/* MODALS */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,10,5,.58);z-index:1000;align-items:center;justify-content:center;padding:14px;}
+.modal-overlay.open{display:flex;}
+.modal{background:white;border-radius:12px;width:520px;max-width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(26,10,5,.28);animation:modalIn .18s ease;}
+@keyframes modalIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+.modal-pad{padding:22px 24px;}
+.modal-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.modal-title{font-family:'Playfair Display',serif;font-size:1.12rem;font-weight:700;color:var(--brown-dark);margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.modal-close-x{border:none;background:none;cursor:pointer;color:#bbb;display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;transition:all .15s;flex-shrink:0;}
+.modal-close-x:hover{background:var(--cream);color:var(--brown-dark);}
+.modal-close-x svg{width:14px;height:14px;display:block;}
+.form-row{margin-bottom:11px;}
+.form-row label{display:block;font-size:.64rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--brown-light);margin-bottom:4px;}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:.83rem;color:var(--brown-dark);background:var(--cream);outline:none;transition:border-color .2s;}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--red);background:white;}
+.form-row textarea{resize:vertical;min-height:55px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.modal-footer{display:flex;justify-content:flex-end;gap:7px;margin-top:14px;padding-top:11px;border-top:1px solid var(--border);}
+.btn-cancel{padding:6px 14px;border:1.5px solid var(--border);border-radius:6px;background:white;font-family:'DM Sans',sans-serif;font-size:.79rem;font-weight:500;color:var(--brown-mid);cursor:pointer;}
+.btn-cancel:hover{border-color:var(--brown-mid);}
+.btn-save{padding:6px 16px;border:none;border-radius:6px;background:var(--red-dark);font-family:'DM Sans',sans-serif;font-size:.79rem;font-weight:700;color:white;cursor:pointer;}
+.btn-save:hover{background:var(--red);}
+
+/* FILE DROP */
+.file-drop-zone{border:2px dashed var(--border);border-radius:7px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;background:var(--cream);margin-top:3px;}
+.file-drop-zone:hover,.file-drop-zone.drag-over{border-color:var(--red);background:#fff8f8;}
+.file-drop-zone svg{width:20px;height:20px;margin-bottom:4px;opacity:.32;color:var(--brown-light);}
+.file-drop-zone p{font-size:.76rem;color:var(--brown-light);}
+.file-drop-zone strong{color:var(--brown-dark);}
+.file-drop-zone input{display:none;}
+.pending-files{margin-top:6px;display:flex;flex-direction:column;gap:3px;}
+.pending-file{display:flex;align-items:center;background:white;border:1.5px solid var(--border);border-radius:5px;padding:4px 8px;font-size:.71rem;}
+.pending-file-name{font-weight:600;color:var(--brown-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.pending-file-size{color:var(--brown-light);flex-shrink:0;margin-left:5px;font-size:.66rem;}
+.pending-file-del{border:none;background:none;color:#ccc;cursor:pointer;flex-shrink:0;margin-left:4px;}
+.pending-file-del:hover{color:#c0392b;}
+.pending-file-del svg{width:10px;height:10px;display:block;}
+
+/* CAT */
+.cat-item{display:flex;align-items:center;justify-content:space-between;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;margin-bottom:5px;background:var(--cream);}
+.cat-item-left{display:flex;align-items:center;gap:7px;}
+.cat-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.cat-name{font-size:.8rem;font-weight:500;}
+.cat-builtin{font-size:.57rem;color:#ccc;text-transform:uppercase;letter-spacing:.06em;margin-left:3px;}
+.cat-del{border:none;background:none;cursor:pointer;color:#ccc;transition:color .15s;}
+.cat-del:hover{color:#c0392b;}
+.cat-del svg{width:11px;height:11px;display:block;}
+.add-cat-row{display:flex;gap:6px;margin-top:9px;}
+.add-cat-row input{flex:1;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:.81rem;outline:none;background:var(--cream);}
+.add-cat-row input:focus{border-color:var(--red);background:white;}
+.add-cat-btn{padding:6px 12px;background:var(--red-dark);color:white;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:.76rem;cursor:pointer;white-space:nowrap;}
+.add-cat-btn:hover{background:var(--red);}
+.cat-note{font-size:.68rem;color:var(--brown-light);margin-top:5px;}
+
+/* IMPORT */
+.upload-zone{border:2px dashed var(--border);border-radius:7px;padding:22px 14px;text-align:center;cursor:pointer;transition:all .2s;background:var(--cream);}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--red);background:#fff8f8;}
+.upload-zone svg{width:28px;height:28px;color:var(--brown-light);margin-bottom:6px;opacity:.4;}
+.upload-zone p{font-size:.8rem;color:var(--brown-light);}
+.upload-zone strong{color:var(--brown-dark);}
+.upload-zone input[type=file]{display:none;}
+.template-link{font-size:.71rem;color:var(--red);cursor:pointer;text-decoration:underline;margin-top:6px;display:inline-block;}
+.upload-preview{margin-top:9px;max-height:180px;overflow-y:auto;border-radius:5px;overflow-x:auto;}
+.preview-table{width:100%;border-collapse:collapse;font-size:.69rem;}
+.preview-table th{background:var(--red-dark);color:white;padding:5px 7px;text-align:left;font-weight:700;font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;}
+.preview-table td{padding:4px 7px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.preview-table tr:nth-child(even) td{background:var(--cream);}
+.upload-info{font-size:.71rem;color:var(--brown-light);margin-top:6px;}
+.upload-info strong{color:var(--brown-dark);}
+.upload-error{color:#c0392b;font-size:.73rem;margin-top:5px;background:#fde8e6;padding:6px 9px;border-radius:5px;}
+
+/* DETAIL MODAL (sales) */
+.detail-header{padding:18px 20px 15px;border-radius:12px 12px 0 0;position:relative;}
+.detail-type{font-size:.61rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.62);margin-bottom:4px;}
+.detail-title{font-family:'Playfair Display',serif;font-size:1.14rem;font-weight:900;color:white;line-height:1.3;padding-right:26px;}
+.detail-close{position:absolute;top:12px;right:12px;border:none;background:rgba(255,255,255,.15);color:white;width:25px;height:25px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.detail-close:hover{background:rgba(255,255,255,.28);}
+.detail-close svg{width:11px;height:11px;}
+.detail-body{padding:17px 20px;}
+.detail-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.detail-row:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+.detail-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.detail-icon svg{width:13px;height:13px;}
+.detail-label{font-size:.61rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--brown-light);margin-bottom:2px;}
+.detail-value{font-size:.84rem;font-weight:500;color:var(--brown-dark);line-height:1.4;}
+.detail-value.hl{font-weight:700;color:var(--red);}
+.attach-list{margin-top:5px;display:flex;flex-direction:column;gap:4px;}
+.attach-item{display:flex;align-items:center;gap:7px;background:var(--cream);border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;cursor:pointer;transition:all .15s;}
+.attach-item:hover{border-color:var(--red);background:#fff8f8;}
+.attach-item svg{width:14px;height:14px;color:var(--red);flex-shrink:0;}
+.attach-item-name{font-size:.78rem;font-weight:600;color:var(--brown-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.attach-item-size{font-size:.68rem;color:var(--brown-light);flex-shrink:0;}
+.no-attach{font-size:.76rem;color:#bbb;font-style:italic;}
+
+/* JOTFORM MODAL */
+.jotform-overlay{display:none;position:fixed;inset:0;background:rgba(26,10,5,.62);z-index:1000;align-items:center;justify-content:center;padding:14px;}
+.jotform-overlay.open{display:flex;}
+.jotform-modal{background:white;border-radius:12px;width:720px;max-width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(26,10,5,.3);animation:modalIn .18s ease;overflow:hidden;}
+.jotform-modal-header{background:var(--red-dark);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.jotform-modal-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:white;}
+.jotform-modal-close{border:none;background:rgba(255,255,255,.15);color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.jotform-modal-close:hover{background:rgba(255,255,255,.3);}
+.jotform-modal-close svg{width:13px;height:13px;display:block;}
+.jotform-modal-body{flex:1;overflow:hidden;}
+.jotform-modal-body iframe{width:100%;height:100%;min-height:580px;border:none;display:block;}
+
+/* REQUEST CARDS */
+.req-section-heading{display:flex;align-items:center;gap:10px;margin-bottom:12px;margin-top:4px;}
+.req-section-label{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;color:var(--brown-dark);}
+.req-section-count{background:var(--red-dark);color:white;font-size:.61rem;font-weight:700;padding:2px 8px;border-radius:10px;}
+.req-section-line{flex:1;height:1px;background:var(--border);}
+.req-card{background:white;border:1.5px solid var(--border);border-radius:9px;padding:14px 18px;margin-bottom:8px;border-left:4px solid #2d7a4f;transition:box-shadow .2s,opacity .2s;}
+.req-card:hover{box-shadow:0 4px 13px var(--shadow);}
+.req-card.completed{opacity:.45;background:#fafaf8;}
+.req-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;}
+.req-card-title{font-weight:700;font-size:.92rem;color:var(--brown-dark);line-height:1.3;flex:1;}
+.req-card-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.req-complete-btn{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:6px;border:1.5px solid var(--border);background:white;font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:600;color:var(--brown-mid);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.req-complete-btn:hover{border-color:#2d7a4f;color:#2d7a4f;background:#eef8f2;}
+.req-complete-btn.done{border-color:#2d7a4f;background:#2d7a4f;color:white;}
+.req-complete-btn svg{width:13px;height:13px;}
+.req-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;}
+.req-field{display:flex;flex-direction:column;gap:2px;}
+.req-field-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--brown-light);}
+.req-field-value{font-size:.82rem;color:var(--brown-dark);line-height:1.4;}
+.req-field-value.empty{color:#ccc;font-style:italic;}
+.req-field.full{grid-column:1/-1;}
+.req-assigned{display:inline-flex;align-items:center;gap:5px;background:var(--red-light);color:var(--red-dark);font-size:.71rem;font-weight:700;padding:3px 9px;border-radius:20px;}
+
+/* FILE PREVIEW MODAL */
+.preview-overlay{display:none;position:fixed;inset:0;background:rgba(10,5,2,.82);z-index:1100;align-items:center;justify-content:center;padding:14px;}
+.preview-overlay.open{display:flex;}
+.preview-modal{background:white;border-radius:12px;width:860px;max-width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.45);animation:modalIn .18s ease;overflow:hidden;}
+.preview-modal-header{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--border);background:var(--brown-dark);flex-shrink:0;}
+.preview-modal-icon{font-size:1.3rem;flex-shrink:0;}
+.preview-modal-name{font-size:.88rem;font-weight:700;color:white;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.preview-modal-size{font-size:.72rem;color:rgba(255,255,255,.5);flex-shrink:0;}
+.preview-modal-actions{display:flex;gap:6px;flex-shrink:0;}
+.preview-dl-btn{background:var(--gold);color:var(--brown-dark);border:none;padding:6px 14px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background .15s;}
+.preview-dl-btn:hover{background:var(--gold-light);}
+.preview-dl-btn svg{width:13px;height:13px;}
+.preview-close-btn{background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.preview-close-btn:hover{background:rgba(255,255,255,.25);color:white;}
+.preview-close-btn svg{width:13px;height:13px;display:block;}
+.preview-modal-body{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#f5f5f5;min-height:200px;}
+.preview-modal-body img{max-width:100%;max-height:80vh;object-fit:contain;display:block;}
+.preview-modal-body iframe{width:100%;height:80vh;border:none;display:block;}
+.preview-unsupported{text-align:center;padding:48px 28px;color:var(--brown-light);}
+.preview-unsupported .pu-icon{font-size:3.2rem;margin-bottom:14px;}
+.preview-unsupported h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--brown-dark);margin-bottom:6px;}
+.preview-unsupported p{font-size:.82rem;margin-bottom:18px;line-height:1.55;}
+.preview-unsupported .pu-dl{background:var(--red-dark);color:white;border:none;padding:9px 22px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.preview-unsupported .pu-dl:hover{background:var(--red);}
+.preview-unsupported .pu-dl svg{width:15px;height:15px;}
+
+/* LOGIN SCREEN */
+.login-screen{display:none;position:fixed;inset:0;background:var(--red-dark);z-index:2000;align-items:center;justify-content:center;padding:20px;}
+.login-screen.open{display:flex;}
+.login-box{background:white;border-radius:14px;padding:36px 32px;width:380px;max-width:100%;box-shadow:0 24px 80px rgba(0,0,0,.35);animation:modalIn .2s ease;}
+.login-logo{display:flex;align-items:center;justify-content:center;margin-bottom:24px;}
+.login-logo img{height:44px;}
+.login-title{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:var(--brown-dark);text-align:center;margin-bottom:4px;}
+.login-sub{font-size:.76rem;color:var(--brown-light);text-align:center;margin-bottom:24px;}
+.login-field{margin-bottom:13px;}
+.login-field label{display:block;font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--brown-light);margin-bottom:5px;}
+.login-field input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.88rem;color:var(--brown-dark);background:var(--cream);outline:none;transition:border-color .2s;}
+.login-field input:focus{border-color:var(--red);background:white;}
+.login-btn{width:100%;padding:10px;background:var(--red-dark);color:white;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;margin-top:6px;transition:background .2s;}
+.login-btn:hover{background:var(--red);}
+.login-btn:disabled{opacity:.6;cursor:not-allowed;}
+.login-error{background:#fde8e6;color:#c0392b;font-size:.76rem;padding:8px 11px;border-radius:6px;margin-bottom:12px;display:none;}
+.login-error.show{display:block;}
+.profile-success{background:#eef8f2;color:#2d7a4f;font-size:.76rem;padding:8px 11px;border-radius:6px;margin-bottom:12px;display:none;}
+.profile-success.show{display:block;}
+
+/* SALES PREVIEW BANNER */
+.sales-preview-banner{background:var(--gold);color:var(--brown-dark);padding:7px 28px;display:none;align-items:center;gap:10px;font-size:.76rem;font-weight:600;}
+.sales-preview-banner.show{display:flex;}
+.sales-preview-banner svg{width:15px;height:15px;flex-shrink:0;}
+.sales-preview-exit{margin-left:auto;background:var(--brown-dark);color:white;border:none;padding:4px 12px;border-radius:5px;font-family:'DM Sans',sans-serif;font-size:.71rem;font-weight:700;cursor:pointer;transition:background .15s;}
+.sales-preview-exit:hover{background:#333;}
+
+/* SIGN OUT BTN */
+.signout-btn{background:transparent;color:rgba(255,255,255,.55);border:1.5px solid rgba(255,255,255,.18);padding:6px 11px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;}
+.signout-btn:hover{color:white;border-color:rgba(255,255,255,.45);}
+.signout-btn svg{width:12px;height:12px;}
+
+@media(max-width:640px){
+  .header,.filters-bar,.main{padding-left:12px;padding-right:12px;}
+  .mgr-card{grid-template-columns:40px 1fr;grid-template-rows:auto auto;}
+  .sales-card{grid-template-columns:40px 1fr;}
+  .event-actions{
+    grid-column:1/-1;
+    flex-direction:row;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:flex-end;
+    gap:6px;
+    padding-top:8px;
+    border-top:1px solid var(--border);
+    margin-top:4px;
+  }
+  .arrow-col{display:none;}
+  .form-grid{grid-template-columns:1fr;}
+  .cal-cell{min-height:66px;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen open" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <img src="https://mcusercontent.com/b8b83227231f2f0e26759641f/images/f4d5c084-3240-de4a-6231-962425e66050.png" alt="Prairie City Bakery" onerror="this.style.display='none'"/>
+    </div>
+    <div class="login-title">Marketing Calendar</div>
+    <div class="login-sub">Prairie City Bakery &mdash; Sign in to continue</div>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-field"><label>Email</label><input type="email" id="loginEmail" placeholder="you@pcbakery.com" autocomplete="email"/></div>
+    <div class="login-field"><label>Password</label><input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- SALES PREVIEW BANNER -->
+<div class="sales-preview-banner" id="salesPreviewBanner">
+  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+  <span>Previewing Sales View &mdash; this is what your sales team sees</span>
+  <button class="sales-preview-exit" onclick="exitSalesPreview()">&#8592; Back to Manager View</button>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo-band">
+      <img src="https://mcusercontent.com/b8b83227231f2f0e26759641f/images/f4d5c084-3240-de4a-6231-962425e66050.png" alt="Prairie City Bakery" onerror="this.style.display='none'"/>
+    </div>
+    <div>
+      <div class="header-title" id="headerTitle">Marketing Calendar</div>
+      <div class="header-sub" id="headerSub">Prairie City Bakery &mdash; Internal</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <!-- MODE -->
+    <div class="mode-toggle" id="modeToggle" style="display:none">
+      <button class="mode-btn active" id="mgrBtn" onclick="setMode('manager')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        Manager
+      </button>
+      <button class="mode-btn" id="salesBtn" onclick="setMode('sales')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        Sales View
+      </button>
+    </div>
+    <!-- CALENDAR/LIST -->
+    <div class="view-toggle" id="mgrViewToggle" style="display:none">
+      <button class="vt-btn active" id="vtList" onclick="setCalView('list')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>List
+      </button>
+      <button class="vt-btn" id="vtCal" onclick="setCalView('cal')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Calendar
+      </button>
+      <button class="vt-btn" id="vtReq" onclick="setCalView('requests')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Requests
+        <span id="reqBadge" style="display:none;background:#c0392b;color:white;font-size:.58rem;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:2px;"></span>
+      </button>
+    </div>
+    <!-- MGR TOOLS -->
+    <div id="mgrTools" style="display:none;gap:6px;align-items:center;">
+      <button class="ghost-btn" onclick="openImportModal()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>Import
+      </button>
+      <button class="ghost-btn" onclick="openCatModal()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M7 7h.01M7 12h.01M7 17h.01M11 7h6M11 12h6M11 17h6"/></svg>Categories
+      </button>
+      <button class="add-btn" onclick="openEventModal()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 4v16m8-8H4"/></svg>Add Event
+      </button>
+    </div>
+    <div id="salesBadge" class="sales-badge" style="display:none">Sales Team View</div>
+    <button id="salesAddBtn" class="add-btn" style="display:none;background:#1565c0;color:white;" onclick="openSalesModal()">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 4v16m8-8H4"/></svg>Add Item
+    </button>
+    <button id="mktRequestBtn" class="add-btn" style="display:none;background:#1e8a3c;color:white;box-shadow:0 0 0 2px rgba(30,138,60,.25);" onclick="openJotformModal()">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Marketing Request
+    </button>
+    <button class="signout-btn" id="profileBtn" onclick="openProfile()" style="display:none">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <span id="profileBtnName">Account</span>
+    </button>
+    <button class="signout-btn" id="signoutBtn" onclick="doSignOut()">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      Sign Out
+    </button>
+  </div>
+</header>
+
+<div class="filters-bar" id="filtersBar"></div>
+
+<main class="main">
+  <div id="upcomingBar"></div>
+  <div class="stats-row" id="statsRow"></div>
+  <div id="listView"></div>
+  <div id="calView" style="display:none"></div>
+  <div id="requestsView" style="display:none"></div>
+</main>
+
+<!-- POPOVER -->
+<div class="popover" id="popover" style="display:none">
+  <button class="popover-close" onclick="closePop()"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+  <div class="popover-title" id="pop-title"></div>
+  <div class="popover-meta" id="pop-meta"></div>
+  <div class="popover-actions" id="pop-actions"></div>
+</div>
+
+<!-- EVENT MODAL -->
+<div class="modal-overlay" id="eventOverlay" onclick="handleEventOverlay(event)">
+  <div class="modal"><div class="modal-pad">
+    <div class="modal-title-row">
+      <div class="modal-title" id="eventModalTitle">Add Marketing Event</div>
+      <button class="modal-close-x" onclick="requestCloseEventModal()" title="Close">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-row"><label>Event Title</label><input type="text" id="f-title" placeholder="e.g. National Cookie Day Post"/></div>
+    <div class="form-grid">
+      <div class="form-row"><label>Event Type</label><select id="f-type"></select></div>
+      <div class="form-row"><label>Priority</label>
+        <select id="f-priority"><option value="High">High</option><option value="Medium" selected>Medium</option><option value="Low">Low</option></select>
+      </div>
+      <div class="form-row"><label>Start Date</label><input type="date" id="f-date"/></div>
+      <div class="form-row"><label>End Date (optional)</label><input type="date" id="f-enddate"/></div>
+      <div class="form-row"><label>Run Date (Sales)</label><input type="date" id="f-rundate"/></div>
+      <div class="form-row" style="grid-column:1/-1"><label>Status</label>
+        <select id="f-status"><option>Draft</option><option>In Review</option><option>Published</option><option>Completed</option></select>
+      </div>
+      <div class="form-row" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--cream);border-radius:7px;border:1.5px solid var(--border);">
+        <input type="checkbox" id="f-shared" style="width:16px;height:16px;accent-color:#1565c0;cursor:pointer;flex-shrink:0;"/>
+        <label for="f-shared" style="font-size:.78rem;font-weight:600;color:var(--brown-dark);cursor:pointer;text-transform:none;letter-spacing:0;margin-bottom:0;">
+          Share with Sales Team &mdash; <span style="font-weight:400;color:var(--brown-light);">makes this event visible in Sales View</span>
+        </label>
+      </div>
+    </div>
+    <div class="form-row"><label>Notes</label><textarea id="f-notes" placeholder="Channel, audience, campaign details..."></textarea></div>
+    <div class="form-row">
+      <label>Attachments (PDF, images, docs — max 25MB each)</label>
+      <div class="file-drop-zone" id="fileDropZone" onclick="document.getElementById('attachInput').click()" ondragover="fileDragOver(event)" ondragleave="fileDragLeave()" ondrop="fileDrop(event)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+        <p><strong>Click to attach</strong> or drag and drop &mdash; up to 25MB each</p>
+        <input type="file" id="attachInput" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.ppt,.pptx,.xls,.xlsx" onchange="handleAttachSelect(event)"/>
+      </div>
+      <div class="pending-files" id="pendingFiles"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('eventOverlay')">Cancel</button>
+      <button class="btn-save" onclick="saveEvent()">Save Event</button>
+    </div>
+  </div></div>
+</div>
+
+<!-- CAT MODAL -->
+<div class="modal-overlay" id="catOverlay" onclick="handleOverlay(event,'catOverlay')">
+  <div class="modal"><div class="modal-pad">
+    <div class="modal-title">Manage Event Categories</div>
+    <div id="catList" style="margin:7px 0 3px;"></div>
+    <div class="add-cat-row">
+      <input type="text" id="newCatInput" placeholder="New category name..." maxlength="40" onkeydown="if(event.key==='Enter')addCat()"/>
+      <button class="add-cat-btn" onclick="addCat()">+ Add</button>
+    </div>
+    <p class="cat-note">Custom categories can be deleted; built-in ones are permanent.</p>
+    <div class="modal-footer"><button class="btn-save" onclick="closeModal('catOverlay')">Done</button></div>
+  </div></div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="importOverlay" onclick="handleOverlay(event,'importOverlay')">
+  <div class="modal"><div class="modal-pad">
+    <div class="modal-title">Import Events from Excel</div>
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('xlsxInput').click()" ondragover="xlsDragOver(event)" ondragleave="xlsDragLeave()" ondrop="xlsDrop(event)">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <p><strong>Click to upload</strong> or drag and drop &mdash; .xlsx or .xls</p>
+      <input type="file" id="xlsxInput" accept=".xlsx,.xls" onchange="xlsSelect(event)"/>
+    </div>
+    <div style="text-align:center"><span class="template-link" onclick="downloadTemplate()">Download import template (.xlsx)</span></div>
+    <div id="uploadError" style="display:none" class="upload-error"></div>
+    <div id="uploadPreview" style="display:none" class="upload-preview"></div>
+    <div id="uploadInfo" style="display:none" class="upload-info"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('importOverlay');resetUpload()">Cancel</button>
+      <button class="btn-save" id="importBtn" style="display:none" onclick="importEvents()">Import Events</button>
+    </div>
+  </div></div>
+</div>
+
+<!-- JOTFORM MARKETING REQUEST MODAL -->
+<div class="jotform-overlay" id="jotformOverlay" onclick="if(event.target===this)closeJotformModal()">
+  <div class="jotform-modal">
+    <div class="jotform-modal-header">
+      <div class="jotform-modal-title">Marketing Request Form</div>
+      <button class="jotform-modal-close" onclick="closeJotformModal()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="jotform-modal-body" style="overflow-y:auto;">
+      <iframe
+        id="JotFormIFrame-252084984000150"
+        title="Marketing Request Form"
+        onload="window.parent.scrollTo(0,0)"
+        allowtransparency="true"
+        allow="geolocation; microphone; camera; fullscreen; payment"
+        src="https://form.jotform.com/252084984000150"
+        frameborder="0"
+        style="min-width:100%;max-width:100%;height:580px;border:none;"
+        scrolling="no"
+      ></iframe>
+    </div>
+  </div>
+</div>
+<script src='https://cdn.jotfor.ms/s/umd/latest/for-form-embed-handler.js'></script>
+<script>window.jotformEmbedHandler("iframe[id='JotFormIFrame-252084984000150']", "https://form.jotform.com/")</script>
+
+<!-- SALES SUBMIT MODAL -->
+<div class="modal-overlay" id="salesOverlay" onclick="handleOverlay(event,'salesOverlay')">
+  <div class="modal"><div class="modal-pad">
+    <div class="modal-title">Add to Calendar</div>
+    <p style="font-size:.78rem;color:var(--brown-light);margin-bottom:14px;line-height:1.5;">Submit a trade show, retailer promo, or other field event. Marketing will review and confirm it on the calendar.</p>
+    <div class="form-row"><label>Event Name</label><input type="text" id="s-title" placeholder="e.g. Walmart Spring Reset, NACS Trade Show"/></div>
+    <div class="form-grid">
+      <div class="form-row"><label>Type</label>
+        <select id="s-type">
+          <option>Trade Show</option>
+          <option>Retailer Promotion</option>
+          <option>Sales Meeting</option>
+          <option>Product Demo</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Start Date</label><input type="date" id="s-date"/></div>
+      <div class="form-row" style="grid-column:1/-1"><label>End Date (optional)</label><input type="date" id="s-enddate"/></div>
+    </div>
+    <div class="form-row"><label>Notes / Details</label><textarea id="s-notes" placeholder="Location, retailer name, what's being promoted..."></textarea></div>
+    <div class="form-row">
+      <label>Attachments (optional)</label>
+      <div class="file-drop-zone" id="salesFileDropZone" onclick="document.getElementById('salesAttachInput').click()" ondragover="fileDragOver2(event)" ondragleave="fileDragLeave2()" ondrop="fileDrop2(event)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+        <p><strong>Click to attach</strong> or drag and drop &mdash; up to 25MB each</p>
+        <input type="file" id="salesAttachInput" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.ppt,.pptx,.xls,.xlsx" onchange="handleSalesAttach(event)"/>
+      </div>
+      <div class="pending-files" id="salesPendingFiles"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('salesOverlay')">Cancel</button>
+      <button class="btn-save" style="background:#1565c0;" onclick="saveSalesItem()">Submit</button>
+    </div>
+  </div></div>
+</div>
+
+<!-- DETAIL MODAL (sales) -->
+<div class="modal-overlay" id="detailOverlay" onclick="handleOverlay(event,'detailOverlay')">
+  <div class="modal">
+    <div class="detail-header" id="detailHeader">
+      <div class="detail-type" id="det-type"></div>
+      <div class="detail-title" id="det-title"></div>
+      <button class="detail-close" onclick="closeModal('detailOverlay')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+    <div class="detail-body" id="detailBody"></div>
+  </div>
+</div>
+
+<!-- PROFILE MODAL -->
+<div class="modal-overlay" id="profileOverlay" onclick="handleOverlay(event,'profileOverlay')">
+  <div class="modal"><div class="modal-pad">
+    <div class="modal-title-row">
+      <div class="modal-title">My Profile</div>
+      <button class="modal-close-x" onclick="closeModal('profileOverlay')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="login-error" id="profileError" style="margin-bottom:10px;"></div>
+    <div class="login-error" id="profileSuccess" style="margin-bottom:10px;background:#eef8f2;color:#2d7a4f;"></div>
+
+    <!-- Account Info -->
+    <div style="font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--brown-light);margin-bottom:8px;">Account Info</div>
+    <div class="form-row"><label>Display Name</label><input type="text" id="prof-name" placeholder="e.g. Alex DeBack"/></div>
+    <div class="form-row"><label>Email</label><input type="email" id="prof-email" placeholder="you@pcbakery.com"/></div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:18px;">
+      <button class="btn-save" id="profSaveBtn" onclick="saveProfile()">Save Changes</button>
+    </div>
+
+    <!-- Divider -->
+    <div style="border-top:1px solid var(--border);margin-bottom:16px;"></div>
+
+    <!-- Change Password -->
+    <div style="font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--brown-light);margin-bottom:8px;">Change Password</div>
+    <div class="form-row"><label>New Password</label><input type="password" id="pw-new" placeholder="Min. 6 characters"/></div>
+    <div class="form-row"><label>Confirm New Password</label><input type="password" id="pw-confirm" placeholder="Re-enter new password"/></div>
+    <div style="display:flex;justify-content:flex-end;">
+      <button class="btn-save" id="pwSaveBtn" onclick="doChangePassword()">Update Password</button>
+    </div>
+  </div></div>
+</div>
+
+<!-- FILE PREVIEW MODAL -->
+<div class="preview-overlay" id="previewOverlay" onclick="if(event.target===this)closePreview()">
+  <div class="preview-modal">
+    <div class="preview-modal-header">
+      <span class="preview-modal-icon" id="prev-icon"></span>
+      <span class="preview-modal-name" id="prev-name"></span>
+      <span class="preview-modal-size" id="prev-size"></span>
+      <div class="preview-modal-actions">
+        <button class="preview-dl-btn" id="prev-dl-btn">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download
+        </button>
+        <button class="preview-close-btn" onclick="closePreview()">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="preview-modal-body" id="prev-body"></div>
+  </div>
+</div>
+
+<script>
+// ════ SHARED DATA ════════════════════════════════
+const BUILTIN=[
+  {name:'Product Launch',    color:'#c0392b',builtin:true},
+  {name:'Email Campaign',    color:'#2563a8',builtin:true},
+  {name:'Social Media Post', color:'#6b3fa0',builtin:true},
+  {name:'Sales/Broker Event',color:'#c8874a',builtin:true},
+  {name:'Promotion/Deal',    color:'#2d7a4f',builtin:true},
+  {name:'Day of Year',       color:'#d4760a',builtin:true},
+  {name:'Advertisement',     color:'#0e7490',builtin:true},
+  {name:'Marketing Request', color:'#2d7a4f',builtin:true},
+];
+const PALETTE=['#7c3d80','#1a6b4a','#8b3a18','#1e5fa8','#5a6e00','#8b6914','#1e7a6e','#a0296e'];
+const STORE_T='pcb-custom-types';
+
+let customTypes=JSON.parse(localStorage.getItem(STORE_T)||'[]');
+let events=[];
+const allTypes=()=>[...BUILTIN,...customTypes];
+const saveT=()=>localStorage.setItem(STORE_T,JSON.stringify(customTypes));
+const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
+const tColor=n=>(allTypes().find(t=>t.name===n)||{color:'#a0714f'}).color;
+const esc=s=>String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;');
+const fmtB=b=>b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFixed(1)+'MB';
+
+// ════ SUPABASE STORAGE ═══════════════════════════
+const SUPABASE_URL='https://mkyxbihqlbrmmvclgobc.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1reXhiaWhxbGJybW12Y2xnb2JjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTc4MTcsImV4cCI6MjA4OTI3MzgxN30.N6owv5zQpwjUAJLSsAbx2ErDAbs8BNDcTSJTlcGxsk0';
+
+// Auth state
+let currentUser=null, currentRole=null, currentName=null, accessToken=null, isSalesPreview=false;
+
+// Generic Supabase REST helper (uses session token when available)
+async function sbFetch(method, path, body=null){
+  const opts={
+    method,
+    headers:{
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer '+(accessToken||SUPABASE_KEY),
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    }
+  };
+  if(body) opts.body=JSON.stringify(body);
+  const res=await fetch(SUPABASE_URL+path, opts);
+  if(!res.ok){
+    const e=await res.json().catch(()=>({}));
+    throw new Error(`Supabase error ${res.status}: ${e?.message||res.statusText}`);
+  }
+  if(res.status===204) return null;
+  return res.json();
+}
+
+// ════ AUTH ════════════════════════════════════════
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const password=document.getElementById('loginPassword').value;
+  const errEl=document.getElementById('loginError');
+  const btn=document.getElementById('loginBtn');
+  errEl.classList.remove('show');
+  if(!email||!password){errEl.textContent='Please enter your email and password.';errEl.classList.add('show');return;}
+  btn.textContent='Signing in...';btn.disabled=true;
+  try{
+    const res=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=password',{
+      method:'POST',
+      headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email,password})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data?.error_description||data?.msg||'Invalid email or password.');
+    accessToken=data.access_token;
+    currentUser=data.user;
+    // Store session for persistence
+    localStorage.setItem('pcb-session',JSON.stringify({access_token:data.access_token,refresh_token:data.refresh_token,user:data.user}));
+    await afterLogin();
+  }catch(err){
+    errEl.textContent=err.message||'Sign in failed.';errEl.classList.add('show');
+  }finally{
+    btn.textContent='Sign In';btn.disabled=false;
+  }
+}
+
+async function restoreSession(){
+  try{
+    const stored=localStorage.getItem('pcb-session');
+    if(!stored) return false;
+    const sess=JSON.parse(stored);
+    // Try to refresh the session
+    const res=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{
+      method:'POST',
+      headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({refresh_token:sess.refresh_token})
+    });
+    if(!res.ok){localStorage.removeItem('pcb-session');return false;}
+    const data=await res.json();
+    accessToken=data.access_token;
+    currentUser=data.user;
+    currentName=data.user?.user_metadata?.full_name
+      ||data.user?.raw_user_meta_data?.full_name
+      ||null;
+    localStorage.setItem('pcb-session',JSON.stringify({access_token:data.access_token,refresh_token:data.refresh_token,user:data.user}));
+    return true;
+  }catch(e){localStorage.removeItem('pcb-session');return false;}
+}
+
+async function fetchRole(){
+  try{
+    const data=await sbFetch('GET',`/rest/v1/profiles?id=eq.${currentUser.id}&select=role`);
+    // Display name is stored in Supabase Auth user_metadata
+    currentName=currentUser?.user_metadata?.full_name
+      ||currentUser?.raw_user_meta_data?.full_name
+      ||null;
+    return data&&data.length?data[0].role:'sales';
+  }catch(e){return 'sales';}
+}
+
+async function afterLogin(){
+  currentRole=await fetchRole();
+  isSalesPreview=false;
+  document.getElementById('loginScreen').classList.remove('open');
+  // Set initial mode based on role
+  mode=currentRole==='manager'?'manager':'sales';
+  const isMgr=currentRole==='manager';
+  // Show/hide all header elements based on role
+  document.getElementById('modeToggle').style.display=isMgr?'flex':'none';
+  document.getElementById('mgrViewToggle').style.display=isMgr?'flex':'none';
+  document.getElementById('mgrTools').style.display=isMgr?'flex':'none';
+  document.getElementById('salesBadge').style.display=isMgr?'none':'block';
+  document.getElementById('salesAddBtn').style.display=isMgr?'none':'flex';
+  document.getElementById('mktRequestBtn').style.display=isMgr?'none':'flex';
+  document.getElementById('headerTitle').textContent=isMgr?'Marketing Calendar':'Marketing Schedule';
+  document.getElementById('headerSub').innerHTML=isMgr?'Prairie City Bakery &mdash; Internal':'Prairie City Bakery';
+  document.getElementById('profileBtn').style.display='flex';
+  document.getElementById('profileBtn').title=currentUser?.email||'';
+  // Show name on profile button if available
+  const nameEl=document.getElementById('profileBtnName');
+  if(nameEl) nameEl.textContent=currentName||(currentUser?.email?.split('@')[0]||'Account');
+  await loadAndRender();
+}
+
+async function doSignOut(){
+  try{
+    await fetch(SUPABASE_URL+'/auth/v1/logout',{method:'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+accessToken}});
+  }catch(e){}
+  accessToken=null;currentUser=null;currentRole=null;currentName=null;isSalesPreview=false;
+  localStorage.removeItem('pcb-session');
+  document.getElementById('loginScreen').classList.add('open');
+  document.getElementById('loginEmail').value='';
+  document.getElementById('loginPassword').value='';
+  document.getElementById('salesPreviewBanner').classList.remove('show');
+  document.getElementById('profileBtn').style.display='none';
+}
+
+function exitSalesPreview(){
+  isSalesPreview=false;
+  document.getElementById('salesPreviewBanner').classList.remove('show');
+  document.getElementById('modeToggle').style.display='flex';
+  setMode('manager');
+}
+
+// Convert Supabase row to internal event format
+function rowToEvent(r){
+  let attachments=[];
+  try{ if(r.attachments_json) attachments=JSON.parse(r.attachments_json); }catch(e){}
+  return {
+    id: r.id,
+    title: r.title||'',
+    type: r.event_type||'Product Launch',
+    date: r.start_date||'',
+    endDate: r.end_date||'',
+    runDate: r.run_date||'',
+    status: r.status||'Draft',
+    priority: r.priority||'Medium',
+    notes: r.notes||'',
+    sharedWithSales: !!r.shared_with_sales,
+    salesSubmitted: !!r.sales_submitted,
+    attachments,
+  };
+}
+
+// Convert internal event format to Supabase row
+function eventToRow(e){
+  return {
+    id: e.id,
+    title: e.title,
+    event_type: e.type,
+    start_date: e.date||null,
+    end_date: e.endDate||null,
+    run_date: e.runDate||null,
+    status: e.status,
+    priority: e.priority,
+    notes: e.notes||'',
+    shared_with_sales: !!e.sharedWithSales,
+    sales_submitted: !!e.salesSubmitted,
+    attachments_json: JSON.stringify(e.attachments||[]),
+  };
+}
+
+// Load all events from Supabase
+async function loadEvents(){
+  const data=await sbFetch('GET','/rest/v1/events?select=*&order=start_date.asc');
+  return (data||[]).map(rowToEvent);
+}
+
+// Save (upsert) a single event to Supabase
+async function saveE(eventToSave){
+  try{
+    // Try to update first; if no rows matched, insert
+    const row=eventToRow(eventToSave);
+    const updateRes=await sbFetch('PATCH',`/rest/v1/events?id=eq.${eventToSave.id}`,row);
+    // If nothing was updated (new record), insert it
+    if(Array.isArray(updateRes)&&updateRes.length===0){
+      await sbFetch('POST','/rest/v1/events',row);
+    }
+  }catch(err){
+    console.error('Save error:',err);
+    alert('Save failed: '+(err?.message||err));
+    throw err;
+  }
+}
+
+// Delete a single event from Supabase
+async function deleteFromSP(id){
+  await sbFetch('DELETE',`/rest/v1/events?id=eq.${id}`);
+}
+
+// ════ INIT ════════════════════════════════════════
+async function loadAndRender(){
+  document.getElementById('listView').innerHTML=`<div class="empty-state"><p>Loading...</p></div>`;
+  try{
+    events=await loadEvents();
+    if(!events.length&&currentRole==='manager'){
+      const f=d=>d.toISOString().split('T')[0];
+      const p=n=>{let d=new Date();d.setDate(d.getDate()+n);return f(d);};
+      const seeds=[
+        {id:uid(),title:'Ooey Gooey Butter Cake Spring Push',type:'Product Launch',date:p(5),endDate:p(8),runDate:p(3),status:'In Review',priority:'High',notes:'Impulse retail positioning, broker sell-in deck needed.',attachments:[],sharedWithSales:true,salesSubmitted:false},
+        {id:uid(),title:'April Newsletter - New Items',type:'Email Campaign',date:p(12),endDate:'',runDate:p(10),status:'Draft',priority:'Medium',notes:'Highlight Coffee House Pound Cake Best New Product win.',attachments:[],sharedWithSales:false,salesSubmitted:false},
+        {id:uid(),title:'Spring Display Ad - Dessert Bars',type:'Advertisement',date:p(9),endDate:p(16),runDate:p(8),status:'In Review',priority:'High',notes:'Digital banner ad for retail partner co-op.',attachments:[],sharedWithSales:true,salesSubmitted:false},
+      ];
+      for(const e of seeds){ events.push(e); await saveE(e); }
+    }
+    render();
+  }catch(err){
+    console.error('Load error:',err);
+    document.getElementById('listView').innerHTML=`<div class="empty-state"><p><strong>Could not load events</strong><br/>${err.message}</p></div>`;
+  }
+}
+
+async function initApp(){
+  // Try to restore existing session first
+  const restored=await restoreSession();
+  if(restored){
+    await afterLogin();
+  }
+  // Otherwise login screen stays visible (already open by default)
+}
+
+// ════ APP STATE ═══════════════════════════════════
+let mode='manager', calView='list', activeFilter='all', showCompleted=false;
+let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
+let popId=null, editingId=null, pendingAttach=[], parsedRows=[];
+
+// ════ MODE ════════════════════════════════════════
+function setMode(m){
+  mode=m;
+  const mgr=m==='manager';
+  // If a sales-role user somehow calls this, force sales
+  if(currentRole==='sales') { mode='sales'; }
+  document.getElementById('mgrBtn').classList.toggle('active',mode==='manager');
+  document.getElementById('salesBtn').classList.toggle('active',mode==='sales');
+  document.getElementById('mgrTools').style.display=mode==='manager'?'flex':'none';
+  document.getElementById('mgrViewToggle').style.display=mode==='manager'?'flex':'none';
+  document.getElementById('salesBadge').style.display=mode==='manager'?'none':'block';
+  document.getElementById('salesAddBtn').style.display=mode==='manager'?'none':'flex';
+  document.getElementById('mktRequestBtn').style.display=mode==='manager'?'none':'flex';
+  document.getElementById('headerTitle').textContent=mode==='manager'?'Marketing Calendar':'Marketing Schedule';
+  document.getElementById('headerSub').innerHTML=mode==='manager'?'Prairie City Bakery &mdash; Internal':'Prairie City Bakery';
+  // Sales preview banner — only show when a manager is previewing sales view
+  const banner=document.getElementById('salesPreviewBanner');
+  if(currentRole==='manager'&&mode==='sales'){
+    isSalesPreview=true;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+  activeFilter='all'; showCompleted=false; activeStatFilter='all'; closePop();
+  if(calView==='requests') setCalView('list');
+  else render();
+}
+
+// Jotform modal
+function openJotformModal(){
+  document.getElementById('jotformOverlay').classList.add('open');
+}
+function closeJotformModal(){
+  document.getElementById('jotformOverlay').classList.remove('open');
+}
+
+// ════ CALENDAR/LIST VIEW ═══════════════════════════
+function setCalView(v){
+  calView=v;
+  document.getElementById('vtList').classList.toggle('active',v==='list');
+  document.getElementById('vtCal').classList.toggle('active',v==='cal');
+  document.getElementById('vtReq').classList.toggle('active',v==='requests');
+  document.getElementById('listView').style.display=v==='list'?'block':'none';
+  document.getElementById('calView').style.display=v==='cal'?'block':'none';
+  document.getElementById('requestsView').style.display=v==='requests'?'block':'none';
+  // Hide filters bar on requests view
+  document.getElementById('filtersBar').style.display=v==='requests'?'none':'flex';
+  closePop(); render();
+}
+
+// ════ FILTERS ═════════════════════════════════════
+function setFilter(f,el){
+  activeFilter=f;
+  document.querySelectorAll('.filter-pill[data-filter]').forEach(p=>p.classList.remove('active'));
+  if(el)el.classList.add('active'); render();
+}
+function toggleCompleted(el){showCompleted=!showCompleted;el.classList.toggle('active',showCompleted);render();}
+function getFiltered(includeCompleted=false){
+  const q=(document.getElementById('searchInput')?.value||'').toLowerCase();
+  let base=events.filter(e=>{
+    if(mode==='sales'&&!e.sharedWithSales&&!e.salesSubmitted) return false;
+    if(mode==='manager'&&!includeCompleted&&!showCompleted&&activeStatFilter!=='Completed'&&e.status==='Completed') return false;
+    if(activeFilter==='__shared__'&&!e.sharedWithSales) return false;
+    else if(activeFilter!=='all'&&activeFilter!=='__shared__'&&e.type!==activeFilter) return false;
+    if(q&&!e.title.toLowerCase().includes(q)&&!(e.notes||'').toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a,b)=>new Date(a.runDate||a.date)-new Date(b.runDate||b.date));
+  if(activeStatFilter&&activeStatFilter!=='all'&&!includeCompleted) base=getStatFiltered(base);
+  return base;
+}
+function renderFilters(){
+  document.getElementById('filtersBar').innerHTML=
+    `<span class="filter-label">Filter</span>
+     <button class="filter-pill ${activeFilter==='all'?'active':''}" data-filter="all" onclick="setFilter('all',this)">All</button>
+     ${allTypes().map(t=>`<button class="filter-pill ${activeFilter===t.name?'active':''}" data-filter="${esc(t.name)}" onclick="setFilter('${esc(t.name)}',this)">${t.name}</button>`).join('')}
+     <div class="filter-sep"></div>
+     <button class="filter-pill ${activeFilter==='__shared__'?'active':''}" data-filter="__shared__" onclick="setFilter('__shared__',this)">&#10003; Shared</button>
+     ${mode==='manager'?`<button class="filter-pill ${showCompleted?'active':''}" onclick="toggleCompleted(this)">Show Completed</button>`:''}
+     <input class="search-input" type="text" placeholder="Search events..." id="searchInput" oninput="render()"/>`;
+}
+
+// ════ STATS / STAGE FILTER ════════════════════════
+function renderStats(){
+  const stages=[
+    {key:'all',        label:'All',        color:'#c8102e', bg:'#fdecea'},
+    {key:'Draft',      label:'Draft',      color:'#888',    bg:'#f0f0ee'},
+    {key:'In Review',  label:'In Review',  color:'#a07020', bg:'#fffbf0'},
+    {key:'Published',  label:'Published',  color:'#1565c0', bg:'#e8f4fd'},
+    {key:'Completed',  label:'Completed',  color:'#2d7a4f', bg:'#e6f4ed'},
+  ];
+  const base = mode==='sales'
+    ? events.filter(e=>e.sharedWithSales||e.salesSubmitted)
+    : events;
+  document.getElementById('statsRow').innerHTML = stages.map(({key,label,color,bg})=>{
+    const count = key==='all' ? base.length : base.filter(e=>e.status===key).length;
+    const isActive = activeStatFilter===key;
+    return `<div class="stat-card${isActive?' stat-card-active':''}"
+      onclick="setStatFilter('${key}')" style="cursor:pointer;"
+      title="${isActive?'Click to clear filter':'Filter by '+label}">
+      <div class="stat-icon" style="background:${bg}">
+        <svg fill="none" viewBox="0 0 24 24" stroke="${color}" stroke-width="2.5">
+          ${key==='all'     ?'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'
+          :key==='Draft'    ?'<path stroke-linecap="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>'
+          :key==='In Review'?'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3" stroke-linecap="round"/>'
+          :key==='Published'?'<path stroke-linecap="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>'
+          :                  '<path stroke-linecap="round" d="M5 13l4 4L19 7"/>'}
+        </svg>
+      </div>
+      <div>
+        <div class="stat-num" style="color:${isActive?color:'var(--brown-dark)'}">${count}</div>
+        <div class="stat-lbl">${label}${isActive?' ✕':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════ UPCOMING BANNER ═════════════════════════════
+function renderUpcoming(){
+  const bar=document.getElementById('upcomingBar');
+  if(mode!=='sales'){bar.innerHTML='';return;}
+  const today=new Date();today.setHours(0,0,0,0);
+  const next=events.filter(e=>(e.sharedWithSales||e.salesSubmitted)&&e.status!=='Completed').find(e=>new Date((e.runDate||e.date)+'T00:00:00')>=today);
+  if(!next){bar.innerHTML='';return;}
+  const rd=new Date((next.runDate||next.date)+'T00:00:00');
+  const diff=Math.round((rd-today)/864e5);
+  const lbl=diff===0?'Today':diff===1?'Tomorrow':`In ${diff} days`;
+  bar.innerHTML=`<div class="upcoming-bar"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><div style="flex:1"><div class="upcoming-bar-label">Next Up</div><div class="upcoming-bar-title">${next.title}</div><div class="upcoming-bar-meta">${next.type} &middot; ${rd.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div></div><div class="upcoming-bar-badge">${lbl}</div></div>`;
+}
+
+// ════ RENDER DISPATCHER ════════════════════════════
+function render(){
+  renderFilters();renderStats();renderUpcoming();
+  updateReqBadge();
+  if(calView==='list') renderList();
+  else if(calView==='cal') renderCalGrid();
+  else if(calView==='requests') renderRequests();
+}
+
+function updateReqBadge(){
+  const badge=document.getElementById('reqBadge');
+  if(!badge) return;
+  const open=events.filter(e=>e.type==='Marketing Request'&&e.status!=='Completed').length;
+  badge.textContent=open;
+  badge.style.display=open>0?'inline-block':'none';
+}
+
+// ════ REQUESTS VIEW ════════════════════════════════
+function parseRequestNotes(notes){
+  const result={requester:'',assignedTo:'',customer:'',brandStds:''};
+  if(!notes) return result;
+  notes.split('\n').forEach(l=>{
+    if(l.startsWith('Requested by:')) result.requester=l.replace('Requested by:','').trim();
+    else if(l.startsWith('Assigned to:')) result.assignedTo=l.replace('Assigned to:','').trim();
+    else if(l.startsWith('Customer:')) result.customer=l.replace('Customer:','').trim();
+    else if(l.startsWith('Brand standards:')) result.brandStds=l.replace('Brand standards:','').trim();
+  });
+  return result;
+}
+
+function renderRequests(){
+  const container=document.getElementById('requestsView');
+  const allReqs=events.filter(e=>e.type==='Marketing Request')
+    .sort((a,b)=>{
+      if(a.status==='Completed'&&b.status!=='Completed') return 1;
+      if(b.status==='Completed'&&a.status!=='Completed') return -1;
+      return new Date(a.date||'9999')-new Date(b.date||'9999');
+    });
+  if(!allReqs.length){
+    container.innerHTML=`<div class="empty-state"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><p>No marketing requests yet. They'll appear here when submitted via the form.</p></div>`;
+    return;
+  }
+  const open=allReqs.filter(e=>e.status!=='Completed');
+  const done=allReqs.filter(e=>e.status==='Completed');
+  function reqCard(e){
+    const f=parseRequestNotes(e.notes);
+    const isDone=e.status==='Completed';
+    const dueDate=e.date?new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'';
+    return `<div class="req-card ${isDone?'completed':''}">
+      <div class="req-card-top">
+        <div class="req-card-title">${e.title}</div>
+        <div class="req-card-actions">
+          ${f.assignedTo?`<span class="req-assigned">&#10132; ${f.assignedTo}</span>`:''}
+          <button class="req-complete-btn ${isDone?'done':''}" onclick="toggleRequestComplete('${e.id}')">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg>
+            ${isDone?'Completed':'Mark Complete'}
+          </button>
+          <button class="icon-btn delete" onclick="deleteEvent('${e.id}')" title="Delete">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="req-fields">
+        ${f.requester?`<div class="req-field"><div class="req-field-label">Requested By</div><div class="req-field-value">${f.requester}</div></div>`:''}
+        ${dueDate?`<div class="req-field"><div class="req-field-label">Due Date</div><div class="req-field-value">${dueDate}</div></div>`:''}
+        ${f.customer?`<div class="req-field"><div class="req-field-label">Customer</div><div class="req-field-value">${f.customer}</div></div>`:''}
+        ${f.brandStds?`<div class="req-field full"><div class="req-field-label">Brand Standards</div><div class="req-field-value">${f.brandStds}</div></div>`:''}
+      </div>
+    </div>`;
+  }
+  let html='';
+  if(open.length){
+    html+=`<div class="req-section-heading"><span class="req-section-label">Open Requests</span><span class="req-section-count">${open.length}</span><div class="req-section-line"></div></div>`;
+    html+=open.map(reqCard).join('');
+  }
+  if(done.length){
+    html+=`<div class="req-section-heading" style="margin-top:24px;"><span class="req-section-label" style="color:#aaa;">Completed</span><span class="req-section-count" style="background:#aaa;">${done.length}</span><div class="req-section-line"></div></div>`;
+    html+=done.map(reqCard).join('');
+  }
+  container.innerHTML=html;
+}
+
+async function toggleRequestComplete(id){
+  const e=events.find(x=>x.id===id);if(!e)return;
+  e.status=e.status==='Completed'?'In Review':'Completed';
+  await saveE(e);renderRequests();updateReqBadge();
+}
+
+// ════ LIST VIEW ════════════════════════════════════
+function renderList(){
+  const filtered=getFiltered(),container=document.getElementById('listView');
+  const today=new Date();today.setHours(0,0,0,0);
+  if(!filtered.length){container.innerHTML=empty();return;}
+  // In sales view, sort completed events to the bottom
+  const sorted = mode==='sales'
+    ? [...filtered.filter(e=>e.status!=='Completed'), ...filtered.filter(e=>e.status==='Completed')]
+    : filtered;
+  const groups={};
+  sorted.forEach(e=>{const d=new Date((e.runDate||e.date)+'T00:00:00'),k=d.toLocaleString('default',{month:'long',year:'numeric'});(groups[k]=groups[k]||[]).push(e);});
+  container.innerHTML=Object.entries(groups).map(([mo,evts])=>`
+    <div class="month-group">
+      <div class="month-heading"><span class="month-label">${mo}</span><span class="month-count">${evts.length}</span><div class="month-line"></div></div>
+      ${evts.map(e=>mode==='manager'?mgrCard(e):salesCard(e,today)).join('')}
+    </div>`).join('');
+}
+
+// Extract submitter name from notes field
+function getSubmitter(notes){
+  if(!notes) return null;
+  for(const line of notes.split('\n')){
+    if(line.startsWith('Submitted by:')) return line.replace('Submitted by:','').trim();
+    if(line.startsWith('Requested by:')) return line.replace('Requested by:','').trim();
+  }
+  return null;
+}
+
+function mgrCard(e){
+  const d=new Date(e.date+'T00:00:00'),mon=d.toLocaleString('default',{month:'short'}).toUpperCase(),day=d.getDate();
+  const c=tColor(e.type),rf=e.runDate?new Date(e.runDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+  const endFmt=e.endDate?new Date(e.endDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+  const sc='status-'+e.status.toLowerCase().replace(' ','-');
+  const chips=renderFileIcons(e,true);
+  const submitter=getSubmitter(e.notes);
+  return `<div class="mgr-card ${e.status==='Completed'?'completed':''}" style="border-left:4px solid ${c};cursor:pointer;" onclick="openMgrDetail('${e.id}')">
+    <div class="date-block"><div class="date-month">${mon}</div><div class="date-day">${day}</div></div>
+    <div><div class="event-top">
+      <span class="event-title">${e.title}</span>
+      <span class="type-badge" style="background:${c}20;color:${c}">${e.type}</span>
+      ${e.salesSubmitted?'<span class="sales-submitted-badge">Sales Submitted</span>':''}
+    </div>
+    <div class="event-meta">
+      ${endFmt?`<span class="date-range">&#9679; ${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} &rarr; ${endFmt}</span>`:''}
+      ${rf?`<span class="run-label">&#9654; Run: ${rf}</span>`:''}
+    </div>
+    ${submitter?`<div class="submitter-byline" style="margin-top:3px;">&#128100; ${submitter}</div>`:''}
+    ${e.notes?`<div class="event-notes">${e.notes}</div>`:''}
+    ${chips?`<div class="file-icons-row">${chips}</div>`:''}
+    </div>
+    <div class="event-actions" onclick="event.stopPropagation()">
+      <select class="status-select ${sc}" onchange="updateStatus('${e.id}',this.value)">
+        ${['Draft','In Review','Published','Completed'].map(s=>`<option ${e.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+      <button class="share-btn ${e.sharedWithSales?'shared':''}" onclick="toggleShare('${e.id}')" title="${e.sharedWithSales?'Remove from Sales View':'Share with Sales Team'}">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+        ${e.sharedWithSales?'Shared':'Share'}
+      </button>
+      <span class="priority-badge priority-${e.priority.toLowerCase()}">${e.priority}</span>
+      <div class="action-btns">
+        <button class="icon-btn" title="Edit" onclick="editEvent('${e.id}')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 012.828 2.828L11.828 15.828 8 17l1.172-3.828z"/></svg></button>
+        <button class="icon-btn delete" title="Delete" onclick="deleteEvent('${e.id}')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function salesCard(e,today){
+  const rd=new Date((e.runDate||e.date)+'T00:00:00'),mon=rd.toLocaleString('default',{month:'short'}).toUpperCase(),day=rd.getDate();
+  const c=tColor(e.type),sc='status-'+e.status.toLowerCase().replace(' ','-');
+  const isPast=rd<today&&e.status==='Completed';
+  const endFmt=e.endDate?new Date(e.endDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+  const startFmt=new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const fileIcons=(e.attachments&&e.attachments.length)?e.attachments.map(a=>`<div class="file-icon-chip" onclick="event.stopPropagation();openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join(''):'';
+  const submitter=getSubmitter(e.notes);
+  return `<div class="sales-card ${isPast?'past':''}" style="border-left:4px solid ${c}" onclick="openDetail('${e.id}')">
+    <div class="date-block"><div class="date-month">${mon}</div><div class="date-day">${day}</div></div>
+    <div><div class="event-top">
+      <span class="event-title">${e.title}</span>
+      <span class="type-badge" style="background:${c}20;color:${c}">${e.type}</span>
+      ${e.salesSubmitted?'<span class="sales-submitted-badge">My Submission</span>':''}
+      <span class="status-chip ${sc}">${e.status}</span>
+    </div>
+    <div class="event-meta">
+      ${e.runDate?`<span class="run-label">&#9654; Run: ${rd.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>`:''}
+      ${endFmt?`<span class="date-range">&#9679; ${startFmt} &rarr; ${endFmt}</span>`:''}
+    </div>
+    ${submitter?`<div class="submitter-byline" style="margin-top:3px;">&#128100; ${submitter}</div>`:''}
+    ${fileIcons?`<div class="file-icons-row" style="margin-top:6px;">${fileIcons}</div>`:''}
+    </div>
+    <div class="arrow-col"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M9 5l7 7-7 7"/></svg></div>
+  </div>`;
+}
+
+// ════ CALENDAR GRID ═══════════════════════════════
+function renderCalGrid(){
+  const container=document.getElementById('calView'),today=new Date();
+  const firstDay=new Date(calYear,calMonth,1),lastDay=new Date(calYear,calMonth+1,0);
+  const monthName=firstDay.toLocaleString('default',{month:'long',year:'numeric'});
+  const filtered=getFiltered(true),evtMap={};
+  filtered.forEach(e=>{const k=mode==='sales'?(e.runDate||e.date):e.date;(evtMap[k]=evtMap[k]||[]).push(e);});
+  const cells=[];
+  for(let i=0;i<firstDay.getDay();i++) cells.push({date:new Date(calYear,calMonth,1-firstDay.getDay()+i),other:true});
+  for(let d=1;d<=lastDay.getDate();d++) cells.push({date:new Date(calYear,calMonth,d),other:false});
+  const rem=(7-cells.length%7)%7;
+  for(let i=1;i<=rem;i++) cells.push({date:new Date(calYear,calMonth+1,i),other:true});
+  const dows=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  container.innerHTML=`
+    <div class="cal-nav">
+      <div class="cal-nav-title">${monthName}</div>
+      <div class="cal-nav-btns">
+        <button class="cal-today-btn" onclick="calGoToday()">Today</button>
+        <button class="cal-nav-btn" onclick="calPrev()"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M15 19l-7-7 7-7"/></svg></button>
+        <button class="cal-nav-btn" onclick="calNext()"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M9 5l7 7-7 7"/></svg></button>
+      </div>
+    </div>
+    <div class="cal-grid-wrap">
+      <div class="cal-dow-row">${dows.map(d=>`<div class="cal-dow">${d}</div>`).join('')}</div>
+      <div class="cal-days">${cells.map(cell=>{
+        const ds=cell.date.toISOString().split('T')[0],isToday=cell.date.toDateString()===today.toDateString();
+        const ce=evtMap[ds]||[],shown=ce.slice(0,3),more=ce.length-3;
+        const clickFn=mode==='manager'?`openEventModal('${ds}')`:null;
+        return `<div class="cal-cell ${cell.other?'other-month':''} ${isToday?'today':''}" ${clickFn?`onclick="${clickFn}"`:'style="cursor:default"'}>
+          <div class="cal-day-num">${cell.date.getDate()}</div>
+          ${shown.map(e=>{const c=tColor(e.type);const done=e.status==='Completed';return `<div class="cal-pill" style="background:${c}${done?'11':'22'};color:${c};border-left:3px solid ${c};opacity:${done?'.45':'1'};text-decoration:${done?'line-through':'none'}" onclick="event.stopPropagation();showPop(event,'${e.id}')" title="${e.title}${done?' (Completed':''}">${e.title}</div>`;}).join('')}
+          ${more>0?`<div class="cal-more" onclick="event.stopPropagation()">+${more} more</div>`:''}
+        </div>`;
+      }).join('')}</div>
+    </div>`;
+}
+function calPrev(){if(calMonth===0){calMonth=11;calYear--;}else calMonth--;renderCalGrid();}
+function calNext(){if(calMonth===11){calMonth=0;calYear++;}else calMonth++;renderCalGrid();}
+function calGoToday(){const t=new Date();calYear=t.getFullYear();calMonth=t.getMonth();renderCalGrid();}
+
+// ════ POPOVER ═════════════════════════════════════
+function showPop(ev,id){
+  ev.stopPropagation();
+  const e=events.find(x=>x.id===id);if(!e)return;
+  popId=id;
+  const c=tColor(e.type),d=new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const rf=e.runDate?new Date(e.runDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+  document.getElementById('pop-title').textContent=e.title;
+  document.getElementById('pop-meta').innerHTML=`<span class="type-badge" style="background:${c}20;color:${c};font-size:.58rem;padding:2px 6px;border-radius:8px;font-weight:700;text-transform:uppercase">${e.type}</span><span>${d}</span>${rf?`<span style="color:var(--red);font-weight:700">Run: ${rf}</span>`:''}`;
+  document.getElementById('pop-actions').innerHTML=mode==='manager'
+    ?`<button class="pop-btn" onclick="editEvent('${id}');closePop()">Edit</button><button class="pop-btn danger" onclick="deleteEvent('${id}');closePop()">Delete</button>`
+    :`<button class="pop-btn primary" onclick="openDetail('${id}');closePop()">View Details</button>`;
+  const pop=document.getElementById('popover');pop.style.display='block';
+  const x=Math.min(ev.clientX+10,window.innerWidth-285),y=Math.min(ev.clientY+10,window.innerHeight-190);
+  pop.style.left=x+'px';pop.style.top=y+'px';
+}
+function closePop(){document.getElementById('popover').style.display='none';popId=null;}
+document.addEventListener('click',e=>{const p=document.getElementById('popover');if(p.style.display==='block'&&!p.contains(e.target))closePop();});
+
+// ════ SALES DETAIL ════════════════════════════════
+function openDetail(id){
+  const e=events.find(x=>x.id===id);if(!e)return;
+  const c=tColor(e.type);
+  const rd=e.runDate?new Date(e.runDate+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}):'';
+  const ed=new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const endD=e.endDate?new Date(e.endDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'';
+  const sc='status-'+e.status.toLowerCase().replace(' ','-');
+  document.getElementById('det-type').textContent=e.type;
+  document.getElementById('det-title').textContent=e.title;
+  document.getElementById('detailHeader').style.background=c;
+  document.getElementById('detailBody').innerHTML=`
+    ${rd?`<div class="detail-row"><div class="detail-icon" style="background:#fdecea"><svg fill="none" viewBox="0 0 24 24" stroke="#c8102e" stroke-width="2"><path stroke-linecap="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div><div><div class="detail-label">Run Date</div><div class="detail-value hl">${rd}</div></div></div>`:''}
+    <div class="detail-row"><div class="detail-icon" style="background:${c}18"><svg fill="none" viewBox="0 0 24 24" stroke="${c}" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div><div class="detail-label">${endD?'Date Range':'Event Date'}</div><div class="detail-value">${endD?`${ed} &rarr; ${endD}`:ed}</div></div></div>
+    <div class="detail-row"><div class="detail-icon" style="background:#f0f0ee"><svg fill="none" viewBox="0 0 24 24" stroke="#888" stroke-width="2"><path stroke-linecap="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="status-chip ${sc}">${e.status}</span></div></div></div>
+    ${e.notes?`<div class="detail-row"><div class="detail-icon" style="background:#f5f0ea"><svg fill="none" viewBox="0 0 24 24" stroke="#a0714f" stroke-width="2"><path stroke-linecap="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg></div><div><div class="detail-label">Notes</div><div class="detail-value">${e.notes}</div></div></div>`:''}
+    <div class="detail-row"><div class="detail-icon" style="background:#fdecea"><svg fill="none" viewBox="0 0 24 24" stroke="#c8102e" stroke-width="2"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg></div>
+    <div style="flex:1"><div class="detail-label">Files &amp; Attachments</div>
+      ${e.attachments&&e.attachments.length?`<div class="file-icons-row" style="margin-top:8px;">${e.attachments.map(a=>`<div class="file-icon-chip" onclick="openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join('')}</div>`:'<div class="no-attach">No files attached</div>'}
+    </div></div>`;
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+// Manager detail view — same modal as sales but with edit/delete actions
+function openMgrDetail(id){
+  const e=events.find(x=>x.id===id);if(!e)return;
+  const c=tColor(e.type);
+  const rd=e.runDate?new Date(e.runDate+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}):'';
+  const ed=new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const endD=e.endDate?new Date(e.endDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'';
+  const sc='status-'+e.status.toLowerCase().replace(' ','-');
+  const submitter=getSubmitter(e.notes);
+  document.getElementById('det-type').textContent=e.type;
+  document.getElementById('det-title').textContent=e.title;
+  document.getElementById('detailHeader').style.background=c;
+  document.getElementById('detailBody').innerHTML=`
+    ${rd?`<div class="detail-row"><div class="detail-icon" style="background:#fdecea"><svg fill="none" viewBox="0 0 24 24" stroke="#c8102e" stroke-width="2"><path stroke-linecap="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div><div><div class="detail-label">Run Date</div><div class="detail-value hl">${rd}</div></div></div>`:''}
+    <div class="detail-row"><div class="detail-icon" style="background:${c}18"><svg fill="none" viewBox="0 0 24 24" stroke="${c}" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div><div class="detail-label">${endD?'Date Range':'Event Date'}</div><div class="detail-value">${endD?`${ed} &rarr; ${endD}`:ed}</div></div></div>
+    <div class="detail-row"><div class="detail-icon" style="background:#f0f0ee"><svg fill="none" viewBox="0 0 24 24" stroke="#888" stroke-width="2"><path stroke-linecap="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="status-chip ${sc}">${e.status}</span>&nbsp;<span class="priority-badge priority-${e.priority.toLowerCase()}">${e.priority}</span></div></div></div>
+    ${submitter?`<div class="detail-row"><div class="detail-icon" style="background:#f5f0ea"><svg fill="none" viewBox="0 0 24 24" stroke="#a0714f" stroke-width="2"><path stroke-linecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div><div><div class="detail-label">Submitted By</div><div class="detail-value">${submitter}</div></div></div>`:''}
+    ${e.notes?`<div class="detail-row"><div class="detail-icon" style="background:#f5f0ea"><svg fill="none" viewBox="0 0 24 24" stroke="#a0714f" stroke-width="2"><path stroke-linecap="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg></div><div><div class="detail-label">Notes</div><div class="detail-value">${e.notes}</div></div></div>`:''}
+    <div class="detail-row"><div class="detail-icon" style="background:#fdecea"><svg fill="none" viewBox="0 0 24 24" stroke="#c8102e" stroke-width="2"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg></div>
+    <div style="flex:1"><div class="detail-label">Files &amp; Attachments</div>
+      ${e.attachments&&e.attachments.length?`<div class="file-icons-row" style="margin-top:8px;">${e.attachments.map(a=>`<div class="file-icon-chip" onclick="openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join('')}</div>`:'<div class="no-attach">No files attached</div>'}
+    </div></div>
+    <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+      <button class="pop-btn primary" style="flex:1;padding:8px;" onclick="closeModal('detailOverlay');editEvent('${e.id}')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline;margin-right:4px;"><path stroke-linecap="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 012.828 2.828L11.828 15.828 8 17l1.172-3.828z"/></svg>Edit Event
+      </button>
+      <button class="pop-btn danger" style="flex:1;padding:8px;" onclick="closeModal('detailOverlay');deleteEvent('${e.id}')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline;margin-right:4px;"><path stroke-linecap="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>Delete
+      </button>
+    </div>`;
+  document.getElementById('detailOverlay').classList.add('open');
+}
+async function updateStatus(id,val){
+  const e=events.find(x=>x.id===id);
+  if(e){e.status=val;await saveE(e);renderList();}
+}
+async function deleteEvent(id){
+  if(!confirm('Delete this event?'))return;
+  await deleteFromSP(id);
+  events=events.filter(x=>x.id!==id);
+  render();
+}
+async function delAttach(eid,idx){
+  const e=events.find(x=>x.id===eid);
+  if(e){e.attachments.splice(idx,1);await saveE(e);renderList();}
+}
+function previewFile(dataUrl,name,size){
+  const ext=(name.split('.').pop()||'').toLowerCase();
+  const isImage=['png','jpg','jpeg','gif','webp','bmp','svg'].includes(ext);
+  const isPdf=ext==='pdf';
+  document.getElementById('prev-icon').textContent=fileEmoji(dataUrl.split(';')[0].replace('data:',''));
+  document.getElementById('prev-name').textContent=name;
+  document.getElementById('prev-size').textContent=size?fmtB(size):'';
+  const dlBtn=document.getElementById('prev-dl-btn');
+  dlBtn.onclick=()=>{const a=document.createElement('a');a.href=dataUrl;a.download=name;a.click();};
+  const body=document.getElementById('prev-body');
+  if(isImage){
+    body.innerHTML=`<img src="${dataUrl}" alt="${name}" style="padding:16px;"/>`;
+  } else if(isPdf){
+    // Convert base64 dataUrl to Blob URL — browsers block base64 PDFs in iframes
+    try{
+      const base64=dataUrl.split(',')[1];
+      const binary=atob(base64);
+      const bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+      const blob=new Blob([bytes],{type:'application/pdf'});
+      const blobUrl=URL.createObjectURL(blob);
+      body.innerHTML=`<iframe src="${blobUrl}" title="${name}" style="width:100%;height:80vh;border:none;display:block;"></iframe>`;
+      // Revoke blob URL when modal closes to free memory
+      document.getElementById('previewOverlay')._blobUrl=blobUrl;
+    }catch(err){
+      body.innerHTML=`<div class="preview-unsupported">
+        <div class="pu-icon">📄</div>
+        <h3>${name}</h3>
+        <p>Could not render this PDF in the browser. Download it to view.</p>
+        <button class="pu-dl" onclick="document.getElementById('prev-dl-btn').click()">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download ${name}
+        </button>
+      </div>`;
+    }
+  } else {
+    body.innerHTML=`<div class="preview-unsupported">
+      <div class="pu-icon">${fileEmoji(dataUrl.split(';')[0].replace('data:',''))}</div>
+      <h3>${name}</h3>
+      <p>This file type can't be previewed in the browser.<br/>Download it to open with the appropriate app.</p>
+      <button class="pu-dl" onclick="document.getElementById('prev-dl-btn').click()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Download ${name}
+      </button>
+    </div>`;
+  }
+  document.getElementById('previewOverlay').classList.add('open');
+}
+function closePreview(){
+  const overlay=document.getElementById('previewOverlay');
+  overlay.classList.remove('open');
+  // Revoke any blob URL to free memory
+  if(overlay._blobUrl){URL.revokeObjectURL(overlay._blobUrl);overlay._blobUrl=null;}
+  document.getElementById('prev-body').innerHTML='';
+}
+function openFile(dataUrl,name,size){previewFile(dataUrl,name,size);}
+
+function editEvent(id){
+  const e=events.find(x=>x.id===id);if(!e)return;
+  editingId=id;pendingAttach=[...(e.attachments||[])];
+  fillTypes(e.type);
+  document.getElementById('f-title').value=e.title;
+  document.getElementById('f-priority').value=e.priority;
+  document.getElementById('f-date').value=e.date;
+  document.getElementById('f-enddate').value=e.endDate||'';
+  document.getElementById('f-rundate').value=e.runDate||'';
+  document.getElementById('f-status').value=e.status;
+  document.getElementById('f-notes').value=e.notes||'';
+  document.getElementById('f-shared').checked=!!e.sharedWithSales;
+  renderPending();
+  document.getElementById('eventModalTitle').textContent='Edit Event';
+  document.getElementById('eventOverlay').classList.add('open');
+  setTimeout(snapshotForm,50);
+}
+function openEventModal(pre){
+  editingId=null;pendingAttach=[];fillTypes();
+  ['f-title','f-date','f-enddate','f-rundate','f-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-date').value=pre||'';
+  document.getElementById('f-priority').value='Medium';
+  document.getElementById('f-status').value='Draft';
+  document.getElementById('f-shared').checked=false;
+  renderPending();
+  document.getElementById('eventModalTitle').textContent='Add Marketing Event';
+  document.getElementById('eventOverlay').classList.add('open');
+  setTimeout(snapshotForm,50);
+}
+function fillTypes(sel){document.getElementById('f-type').innerHTML=allTypes().map(t=>`<option value="${t.name}" ${sel===t.name?'selected':''}>${t.name}</option>`).join('');}
+async function saveEvent(){
+  const title=document.getElementById('f-title').value.trim(),date=document.getElementById('f-date').value;
+  if(!title||!date){alert('Please fill in a title and date.');return;}
+  const saveBtn=document.querySelector('#eventOverlay .btn-save');
+  if(saveBtn){saveBtn.textContent='Saving...';saveBtn.disabled=true;}
+  const rawNotes=document.getElementById('f-notes').value.trim();
+  // On new events, prepend submitter name if not already present
+  const notesWithName=(()=>{
+    if(editingId) return rawNotes; // don't re-tag edits
+    const name=currentName||(currentUser?.email?.split('@')[0]||null);
+    if(!name) return rawNotes;
+    if(rawNotes.startsWith('Submitted by:')) return rawNotes;
+    return `Submitted by: ${name}${rawNotes?'\n'+rawNotes:''}`;
+  })();
+  const data={title,type:document.getElementById('f-type').value,priority:document.getElementById('f-priority').value,date,endDate:document.getElementById('f-enddate').value,runDate:document.getElementById('f-rundate').value,status:document.getElementById('f-status').value,notes:notesWithName,attachments:[...pendingAttach],sharedWithSales:document.getElementById('f-shared').checked};
+  try{
+    if(editingId){
+      const i=events.findIndex(x=>x.id===editingId);
+      events[i]={...events[i],...data};
+      await saveE(events[i]);
+    } else {
+      const newEvent={id:uid(),...data,salesSubmitted:false};
+      events.push(newEvent);
+      await saveE(newEvent);
+    }
+    closeModal('eventOverlay');
+    render();
+  }catch(err){
+    alert('Save failed: '+(err?.message||err));
+    if(!editingId) events.pop();
+  }finally{
+    if(saveBtn){saveBtn.textContent='Save Event';saveBtn.disabled=false;}
+  }
+}
+
+// Attachments
+function fileDragOver(e){e.preventDefault();document.getElementById('fileDropZone').classList.add('drag-over');}
+function fileDragLeave(){document.getElementById('fileDropZone').classList.remove('drag-over');}
+function fileDrop(e){e.preventDefault();fileDragLeave();[...e.dataTransfer.files].forEach(readFile);}
+function handleAttachSelect(e){[...e.target.files].forEach(readFile);e.target.value='';}
+function readFile(file){
+  if(file.size>25*1024*1024){alert(`"${file.name}" exceeds 25MB.`);return;}
+  const r=new FileReader();
+  r.onload=ev=>{pendingAttach.push({name:file.name,size:file.size,type:file.type,dataUrl:ev.target.result});renderPending();};
+  r.readAsDataURL(file);
+}
+function renderPending(){
+  document.getElementById('pendingFiles').innerHTML=pendingAttach.map((f,i)=>`<div class="pending-file"><span class="pending-file-name">${f.name}</span><span class="pending-file-size">${fmtB(f.size)}</span><button class="pending-file-del" onclick="pendingAttach.splice(${i},1);renderPending()"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div>`).join('');
+}
+
+// Categories
+function openCatModal(){renderCats();document.getElementById('catOverlay').classList.add('open');}
+function renderCats(){
+  document.getElementById('catList').innerHTML=allTypes().map(t=>`<div class="cat-item"><div class="cat-item-left"><div class="cat-dot" style="background:${t.color}"></div><span class="cat-name">${t.name}</span>${t.builtin?'<span class="cat-builtin">Built-in</span>':''}</div>${!t.builtin?`<button class="cat-del" onclick="deleteCat('${esc(t.name)}')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg></button>`:''}</div>`).join('');
+}
+function addCat(){
+  const input=document.getElementById('newCatInput'),name=input.value.trim();if(!name)return;
+  if(allTypes().find(t=>t.name.toLowerCase()===name.toLowerCase())){alert('Category already exists.');return;}
+  customTypes.push({name,color:PALETTE[customTypes.length%PALETTE.length],builtin:false});
+  saveT();input.value='';renderCats();renderFilters();
+}
+function deleteCat(name){
+  if(events.some(e=>e.type===name)&&!confirm(`"${name}" is in use. Delete anyway?`))return;
+  customTypes=customTypes.filter(t=>t.name!==name);saveT();renderCats();renderFilters();render();
+}
+
+// Excel import
+function openImportModal(){resetUpload();document.getElementById('importOverlay').classList.add('open');}
+function resetUpload(){parsedRows=[];['uploadPreview','uploadInfo','uploadError'].forEach(id=>{const el=document.getElementById(id);el.style.display='none';el.innerHTML='';});document.getElementById('importBtn').style.display='none';document.getElementById('xlsxInput').value='';}
+function xlsDragOver(e){e.preventDefault();document.getElementById('uploadZone').classList.add('drag-over');}
+function xlsDragLeave(){document.getElementById('uploadZone').classList.remove('drag-over');}
+function xlsDrop(e){e.preventDefault();xlsDragLeave();const f=e.dataTransfer.files[0];if(f)processXls(f);}
+function xlsSelect(e){const f=e.target.files[0];if(f)processXls(f);}
+function processXls(file){const r=new FileReader();r.onload=ev=>{try{const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});parseRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}));}catch{showErr('Could not read file.');}};r.readAsArrayBuffer(file);}
+function colV(row,...keys){for(const k of keys){const f=Object.keys(row).find(c=>c.toLowerCase().replace(/[\s_]/g,'')===k.toLowerCase().replace(/[\s_]/g,''));if(f&&row[f]!==undefined&&row[f]!=='')return row[f];}return '';}
+function normD(v){if(!v)return '';if(v instanceof Date)return v.toISOString().split('T')[0];const d=new Date(String(v).trim());return isNaN(d)?String(v).trim():d.toISOString().split('T')[0];}
+function normT(v){const s=String(v||'').trim();const m=allTypes().find(t=>t.name.toLowerCase()===s.toLowerCase());return m?m.name:(s||'Product Launch');}
+function parseRows(rows){
+  document.getElementById('uploadError').style.display='none';
+  if(!rows.length){showErr('Spreadsheet is empty.');return;}
+  parsedRows=rows.map(r=>({id:uid(),title:String(colV(r,'title','event','eventname','name')||'').trim(),type:normT(colV(r,'type','eventtype','category')),date:normD(colV(r,'date','eventdate')),runDate:normD(colV(r,'rundate','run date','runon','salesdate')),status:['Draft','In Review','Published','Completed'].includes(String(colV(r,'status')).trim())?String(colV(r,'status')).trim():'Draft',priority:['High','Medium','Low'].includes(String(colV(r,'priority')).trim())?String(colV(r,'priority')).trim():'Medium',notes:String(colV(r,'notes','note','description','details')||'').trim(),attachments:[]})).filter(r=>r.title);
+  if(!parsedRows.length){showErr('No valid rows found.');return;}
+  const prev=document.getElementById('uploadPreview');prev.style.display='block';prev.innerHTML=`<table class="preview-table"><thead><tr><th>Title</th><th>Type</th><th>Date</th><th>Status</th><th>Priority</th></tr></thead><tbody>${parsedRows.slice(0,10).map(r=>`<tr><td>${r.title}</td><td>${r.type}</td><td>${r.date}</td><td>${r.status}</td><td>${r.priority}</td></tr>`).join('')}</tbody></table>`;
+  const info=document.getElementById('uploadInfo');info.style.display='block';info.innerHTML=`<strong>${parsedRows.length}</strong> event${parsedRows.length!==1?'s':''} ready to import${parsedRows.length>10?' (showing first 10)':''}.`;
+  document.getElementById('importBtn').style.display='inline-block';
+}
+function showErr(msg){const el=document.getElementById('uploadError');el.textContent=msg;el.style.display='block';}
+async function importEvents(){
+  if(!parsedRows.length)return;
+  if(!confirm(`Import ${parsedRows.length} event(s)?`))return;
+  const btn=document.getElementById('importBtn');
+  if(btn){btn.textContent='Importing...';btn.disabled=true;}
+  try{
+    for(const e of parsedRows){ events.push(e); await saveE(e); }
+    closeModal('importOverlay');resetUpload();render();
+  }catch(err){
+    alert('Import failed: '+(err?.message||err));
+  }finally{
+    if(btn){btn.textContent='Import Events';btn.disabled=false;}
+  }
+}
+function downloadTemplate(){const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([['Title','Type','Date (YYYY-MM-DD)','Run Date (YYYY-MM-DD)','Status','Priority','Notes'],['National Donut Day Post','Day of Year','2026-06-05','2026-06-04','Draft','High','Feature Donut Hole Cups'],['Summer Trade Ad','Advertisement','2026-07-01','2026-06-28','Draft','Medium',''],['Lava Cake Launch Email','Email Campaign','2026-05-15','2026-05-14','Draft','High','']]);ws['!cols']=[{wch:32},{wch:22},{wch:22},{wch:22},{wch:14},{wch:12},{wch:38}];XLSX.utils.book_append_sheet(wb,ws,'Events');XLSX.writeFile(wb,'pcb-marketing-calendar-template.xlsx');}
+
+// File icon helper — renders attachments as icon thumbnails in the list view
+function fileEmoji(type){
+  if(!type) return '📎';
+  if(type.includes('pdf')) return '📄';
+  if(type.includes('image')) return '🖼️';
+  if(type.includes('word')||type.includes('document')) return '📝';
+  if(type.includes('presentation')||type.includes('powerpoint')) return '📊';
+  if(type.includes('sheet')||type.includes('excel')) return '📋';
+  return '📎';
+}
+function renderFileIcons(e,editable=false){
+  if(!e.attachments||!e.attachments.length) return '';
+  return e.attachments.map((a,i)=>`
+    <div class="file-icon-chip" onclick="openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0})" title="${a.name}">
+      <span class="fi-icon">${fileEmoji(a.type)}</span>
+      <span class="fi-name">${a.name}</span>
+      ${editable?`<button class="fi-del" onclick="event.stopPropagation();delAttach('${e.id}',${i})" title="Remove">&#10005;</button>`:''}
+    </div>`).join('');
+}
+
+// Unsaved changes tracking
+let eventFormSnapshot='';
+function snapshotForm(){
+  try{
+    eventFormSnapshot=JSON.stringify({
+      title:document.getElementById('f-title').value,
+      type:document.getElementById('f-type').value,
+      priority:document.getElementById('f-priority').value,
+      date:document.getElementById('f-date').value,
+      endDate:document.getElementById('f-enddate').value,
+      runDate:document.getElementById('f-rundate').value,
+      status:document.getElementById('f-status').value,
+      notes:document.getElementById('f-notes').value,
+      shared:document.getElementById('f-shared').checked,
+      attachCount:pendingAttach.length
+    });
+  }catch(e){eventFormSnapshot='';}
+}
+function formHasChanges(){
+  try{
+    const cur=JSON.stringify({
+      title:document.getElementById('f-title').value,
+      type:document.getElementById('f-type').value,
+      priority:document.getElementById('f-priority').value,
+      date:document.getElementById('f-date').value,
+      endDate:document.getElementById('f-enddate').value,
+      runDate:document.getElementById('f-rundate').value,
+      status:document.getElementById('f-status').value,
+      notes:document.getElementById('f-notes').value,
+      shared:document.getElementById('f-shared').checked,
+      attachCount:pendingAttach.length
+    });
+    return cur!==eventFormSnapshot;
+  }catch(e){return false;}
+}
+function requestCloseEventModal(){
+  if(formHasChanges()&&!confirm('You have unsaved changes. Close without saving?')) return;
+  closeModal('eventOverlay');
+}
+function handleEventOverlay(e){
+  if(e.target===document.getElementById('eventOverlay')) requestCloseEventModal();
+}
+
+// Toggle share with sales
+async function toggleShare(id){
+  const e=events.find(x=>x.id===id);if(!e)return;
+  e.sharedWithSales=!e.sharedWithSales;
+  await saveE(e);renderList();
+}
+
+// Sales team submit
+// Sales attachment state
+let salesPendingAttach=[];
+
+function openSalesModal(){
+  ['s-title','s-date','s-enddate','s-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('s-type').value='Trade Show';
+  salesPendingAttach=[];
+  renderSalesPending();
+  document.getElementById('salesOverlay').classList.add('open');
+}
+
+// Sales file attachment handlers
+function fileDragOver2(e){e.preventDefault();document.getElementById('salesFileDropZone').classList.add('drag-over');}
+function fileDragLeave2(){document.getElementById('salesFileDropZone').classList.remove('drag-over');}
+function fileDrop2(e){e.preventDefault();fileDragLeave2();[...e.dataTransfer.files].forEach(readSalesFile);}
+function handleSalesAttach(e){[...e.target.files].forEach(readSalesFile);e.target.value='';}
+function readSalesFile(file){
+  if(file.size>25*1024*1024){alert(`"${file.name}" exceeds 25MB.`);return;}
+  const r=new FileReader();
+  r.onload=ev=>{salesPendingAttach.push({name:file.name,size:file.size,type:file.type,dataUrl:ev.target.result});renderSalesPending();};
+  r.readAsDataURL(file);
+}
+function renderSalesPending(){
+  document.getElementById('salesPendingFiles').innerHTML=salesPendingAttach.map((f,i)=>`<div class="pending-file"><span class="pending-file-name">${f.name}</span><span class="pending-file-size">${fmtB(f.size)}</span><button class="pending-file-del" onclick="salesPendingAttach.splice(${i},1);renderSalesPending()"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div>`).join('');
+}
+
+async function saveSalesItem(){
+  const title=document.getElementById('s-title').value.trim(),date=document.getElementById('s-date').value;
+  if(!title||!date){alert('Please fill in a name and start date.');return;}
+  const submitterName=currentName||(currentUser?.email?.split('@')[0]||'Sales');
+  const baseNotes=document.getElementById('s-notes').value.trim();
+  const notes=`Submitted by: ${submitterName}${baseNotes?'\n'+baseNotes:''}`;
+  const item={id:uid(),title,type:document.getElementById('s-type').value,date,endDate:document.getElementById('s-enddate').value,runDate:'',status:'In Review',priority:'Medium',notes,attachments:[...salesPendingAttach],sharedWithSales:true,salesSubmitted:true};
+  events.push(item);
+  await saveE(item);closeModal('salesOverlay');render();
+}
+
+// ════ PROFILE ═════════════════════════════════════
+function openProfile(){
+  document.getElementById('prof-name').value=currentName||'';
+  document.getElementById('prof-email').value=currentUser?.email||'';
+  document.getElementById('pw-new').value='';
+  document.getElementById('pw-confirm').value='';
+  document.getElementById('profileError').classList.remove('show');
+  document.getElementById('profileSuccess').classList.remove('show');
+  document.getElementById('profileOverlay').classList.add('open');
+}
+
+async function saveProfile(){
+  const name=document.getElementById('prof-name').value.trim();
+  const email=document.getElementById('prof-email').value.trim();
+  const errEl=document.getElementById('profileError');
+  const succEl=document.getElementById('profileSuccess');
+  const btn=document.getElementById('profSaveBtn');
+  errEl.classList.remove('show');succEl.classList.remove('show');
+  if(!name){errEl.textContent='Please enter a display name.';errEl.classList.add('show');return;}
+  if(!email){errEl.textContent='Please enter an email.';errEl.classList.add('show');return;}
+  btn.textContent='Saving...';btn.disabled=true;
+  try{
+    // Update display name and email via Supabase Auth user metadata
+    const body={data:{full_name:name}};
+    if(email!==currentUser.email) body.email=email;
+    const res=await fetch(SUPABASE_URL+'/auth/v1/user',{
+      method:'PUT',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data?.msg||data?.message||'Update failed.');
+    currentUser={...currentUser,...data};
+    currentName=name;
+    document.getElementById('profileBtnName').textContent=currentName;
+    succEl.textContent='Profile updated!';succEl.classList.add('show');
+    setTimeout(()=>succEl.classList.remove('show'),2500);
+  }catch(err){
+    errEl.textContent=err.message||'Could not save profile.';errEl.classList.add('show');
+  }finally{
+    btn.textContent='Save Changes';btn.disabled=false;
+  }
+}
+
+async function doChangePassword(){
+  const newPw=document.getElementById('pw-new').value;
+  const confirm=document.getElementById('pw-confirm').value;
+  const errEl=document.getElementById('profileError');
+  const succEl=document.getElementById('profileSuccess');
+  const btn=document.getElementById('pwSaveBtn');
+  errEl.classList.remove('show');succEl.classList.remove('show');
+  if(!newPw){errEl.textContent='Please enter a new password.';errEl.classList.add('show');return;}
+  if(newPw.length<6){errEl.textContent='Password must be at least 6 characters.';errEl.classList.add('show');return;}
+  if(newPw!==confirm){errEl.textContent='Passwords do not match.';errEl.classList.add('show');return;}
+  btn.textContent='Updating...';btn.disabled=true;
+  try{
+    const res=await fetch(SUPABASE_URL+'/auth/v1/user',{
+      method:'PUT',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},
+      body:JSON.stringify({password:newPw})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data?.msg||data?.message||'Update failed.');
+    document.getElementById('pw-new').value='';
+    document.getElementById('pw-confirm').value='';
+    succEl.textContent='Password updated successfully!';succEl.classList.add('show');
+    setTimeout(()=>succEl.classList.remove('show'),2500);
+  }catch(err){
+    errEl.textContent=err.message||'Could not update password.';errEl.classList.add('show');
+  }finally{
+    btn.textContent='Update Password';btn.disabled=false;
+  }
+}
+
+// ════ STAT CARD FILTERING ═════════════════════════
+let activeStatFilter='all';
+function setStatFilter(key){
+  activeStatFilter=activeStatFilter===key?'all':key;
+  render();
+}
+function getStatFiltered(base){
+  if(!activeStatFilter||activeStatFilter==='all') return base;
+  return base.filter(e=>e.status===activeStatFilter);
+}
+
+// Helpers
+const empty=()=>`<div class="empty-state"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><p>No events to show.</p></div>`;
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function handleOverlay(e,id){if(e.target===document.getElementById(id))closeModal(id);}
+
+initApp();
+</script>
+</body>
+</html>
