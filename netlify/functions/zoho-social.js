@@ -1,11 +1,14 @@
 exports.handler = async function() {
-  const clientId     = process.env.ZOHO_CLIENT_ID;
-  const clientSecret = process.env.ZOHO_CLIENT_SECRET;
-  const refreshToken = process.env.ZOHO_REFRESH_TOKEN;
+  const clientId     = (process.env.ZOHO_CLIENT_ID     || '').trim();
+  const clientSecret = (process.env.ZOHO_CLIENT_SECRET || '').trim();
+  const refreshToken = (process.env.ZOHO_REFRESH_TOKEN || '').trim();
 
   if (!clientId || !clientSecret || !refreshToken) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'Zoho credentials not configured' }) };
+    return { statusCode: 500, body: JSON.stringify({ error: 'Zoho credentials not configured', has: { clientId: !!clientId, clientSecret: !!clientSecret, refreshToken: !!refreshToken } }) };
   }
+
+  // Debug: return token prefix so we can verify correct value is set
+  const tokenPreview = refreshToken.substring(0, 20) + '...';
 
   try {
     // 1. Refresh access token
@@ -21,7 +24,7 @@ exports.handler = async function() {
     });
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      return { statusCode: 500, body: JSON.stringify({ error: 'Token refresh failed', detail: tokenData }) };
+      return { statusCode: 500, body: JSON.stringify({ error: 'Token refresh failed', detail: tokenData, tokenPreview }) };
     }
     const auth = `Zoho-oauthtoken ${tokenData.access_token}`;
 
