@@ -1663,7 +1663,7 @@ function xlsDragLeave(){document.getElementById('uploadZone').classList.remove('
 function xlsDrop(e){e.preventDefault();xlsDragLeave();const f=e.dataTransfer.files[0];if(f)processXls(f);}
 function xlsSelect(e){const f=e.target.files[0];if(f)processXls(f);}
 function processXls(file){const r=new FileReader();r.onload=ev=>{try{const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});parseRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}));}catch{showErr('Could not read file.');}};r.readAsArrayBuffer(file);}
-function colV(row,...keys){for(const k of keys){const f=Object.keys(row).find(c=>c.toLowerCase().replace(/[\s_]/g,'')===k.toLowerCase().replace(/[\s_]/g,''));if(f&&row[f]!==undefined&&row[f]!=='')return row[f];}return '';}
+function colV(row,...keys){const norm=s=>s.toLowerCase().replace(/[\s_()\-]/g,'');for(const k of keys){const nk=norm(k);const f=Object.keys(row).find(c=>norm(c)===nk||norm(c).startsWith(nk));if(f&&row[f]!==undefined&&row[f]!=='')return row[f];}return '';}
 function normD(v){if(!v)return '';if(v instanceof Date)return v.toISOString().split('T')[0];const d=new Date(String(v).trim());return isNaN(d)?String(v).trim():d.toISOString().split('T')[0];}
 function normT(v){const s=String(v||'').trim();const m=allTypes().find(t=>t.name.toLowerCase()===s.toLowerCase());return m?m.name:(s||'Product Launch');}
 function parseRows(rows){
