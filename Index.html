@@ -1152,7 +1152,8 @@ function parseRequestNotes(notes){
 
 function renderRequests(){
   const container=document.getElementById('requestsView');
-  const allReqs=events.filter(e=>e.type==='Marketing Request')
+  const userName=currentName||(currentUser?.email?.split('@')[0]||'');
+  const allReqs=events.filter(e=>e.type==='Marketing Request'&&(mode!=='sales'||parseRequestNotes(e.notes).requester===userName))
     .sort((a,b)=>{
       if(a.status==='Completed'&&b.status!=='Completed') return 1;
       if(b.status==='Completed'&&a.status!=='Completed') return -1;
