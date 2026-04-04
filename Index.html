@@ -495,6 +495,9 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--brown-
       <button class="ghost-btn" onclick="openImportModal()">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>Import
       </button>
+      <button class="ghost-btn" id="mcSyncBtn" onclick="syncMailchimp()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Sync MailChimp
+      </button>
       <button class="ghost-btn" id="cleanupBtn" onclick="deleteInvalidDateEvents()" style="color:#c0392b;border-color:#c0392b;">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>Remove Invalid
       </button>
@@ -1682,6 +1685,38 @@ function deleteCat(name){
 
 // Excel import
 function openImportModal(){resetUpload();document.getElementById('importOverlay').classList.add('open');}
+
+async function syncMailchimp(){
+  const btn=document.getElementById('mcSyncBtn');
+  btn.disabled=true;btn.textContent='Syncing…';
+  try{
+    const res=await fetch('/.netlify/functions/mailchimp');
+    if(!res.ok) throw new Error(`Server error ${res.status}`);
+    const campaigns=await res.json();
+    if(campaigns.error) throw new Error(campaigns.error);
+    const statusMap={save:'Draft',paused:'Draft',schedule:'Published',sending:'Published',sent:'Completed'};
+    const existingMcIds=new Set(events.map(e=>{const m=(e.notes||'').match(/MailChimp ID: (\S+)/);return m?m[1]:null;}).filter(Boolean));
+    let added=0;
+    for(const c of campaigns){
+      if(existingMcIds.has(c.id)) continue;
+      const dateStr=c.send_time||c.schedule_time;
+      if(!dateStr) continue;
+      const date=dateStr.split('T')[0];
+      const title=c.settings?.subject_line||c.settings?.title||'Untitled Campaign';
+      const status=statusMap[c.status]||'Draft';
+      const item={id:uid(),title,type:'Email Campaign',date,endDate:'',runDate:'',status,priority:'Medium',notes:`MailChimp ID: ${c.id}`,attachments:[],comments:[],sharedWithSales:false,salesSubmitted:false};
+      events.push(item);
+      await saveE(item);
+      added++;
+    }
+    btn.textContent=added>0?`✓ ${added} imported`:'✓ Up to date';
+    if(added>0) render();
+    setTimeout(()=>{btn.disabled=false;btn.textContent='Sync MailChimp';},3000);
+  }catch(err){
+    alert('MailChimp sync failed: '+err.message);
+    btn.disabled=false;btn.textContent='Sync MailChimp';
+  }
+}
 function resetUpload(){parsedRows=[];['uploadPreview','uploadInfo','uploadError'].forEach(id=>{const el=document.getElementById(id);el.style.display='none';el.innerHTML='';});document.getElementById('importBtn').style.display='none';document.getElementById('xlsxInput').value='';}
 function xlsDragOver(e){e.preventDefault();document.getElementById('uploadZone').classList.add('drag-over');}
 function xlsDragLeave(){document.getElementById('uploadZone').classList.remove('drag-over');}
