@@ -1,68 +1,66 @@
 async function fetchOG(url) {
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MarketingCalendarBot/1.0)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
       redirect: 'follow',
-      signal: AbortSignal.timeout(4000)
+      signal: AbortSignal.timeout(5000)
     });
-    if (!res.ok) return null;
+    if (!res.ok) return {};
     const html = await res.text();
     const meta = (prop) => {
       const m = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i'))
                || html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${prop}["']`, 'i'));
       return m ? m[1].trim() : '';
     };
-    return meta('og:image') || meta('twitter:image') || null;
-  } catch { return null; }
+    const titleTag = (html.match(/<title[^>]*>([^<]+)<\/title>/i) || [])[1] || '';
+    return {
+      image:   meta('og:image') || meta('twitter:image') || null,
+      title:   meta('og:title') || meta('twitter:title') || titleTag,
+      snippet: meta('og:description') || meta('twitter:description') || meta('description') || '',
+      date:    meta('article:published_time') || meta('og:updated_time') || ''
+    };
+  } catch { return {}; }
 }
 
-// Scrape a site's search results page for "Prairie City Bakery" mentions
-async function scrapeSite({ searchUrl, source, articlePattern, titleAttr, urlAttr, datePattern, imagePattern, baseUrl }) {
+async function scrapeSite(searchUrl, source, baseUrl) {
   try {
     const res = await fetch(searchUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
       redirect: 'follow',
       signal: AbortSignal.timeout(8000)
     });
     if (!res.ok) return [];
     const html = await res.text();
 
-    const articles = [];
-    const blocks = [...html.matchAll(articlePattern)];
+    // Find all links — keep ones with "prairie" in the href (catches slugs like prairie-city-bakery)
+    const linkRe = /<a\s[^>]*href=["']([^"']*prairie[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
+    const seen = new Set();
+    const candidates = [];
 
-    for (const block of blocks.slice(0, 10)) {
-      const blockHtml = block[1] || block[0];
+    let m;
+    while ((m = linkRe.exec(html)) !== null) {
+      let href = m[1];
+      const linkText = m[2].replace(/<[^>]+>/g, '').trim();
+      if (!href || !linkText || linkText.length < 10) continue;
+      if (!href.startsWith('http')) href = baseUrl + (href.startsWith('/') ? '' : '/') + href;
+      if (seen.has(href)) continue;
+      seen.add(href);
 
-      // Extract URL
-      const urlMatch = blockHtml.match(/href=["']([^"']+prairie[^"']*city[^"']*baker[^"']*|[^"']*baker[^"']*prairie[^"']*|[^"']+)["']/i);
-      const rawUrl = urlMatch ? urlMatch[1] : '';
-      if (!rawUrl) continue;
-      const url = rawUrl.startsWith('http') ? rawUrl : baseUrl + rawUrl;
-
-      // Extract title
-      const titleMatch = blockHtml.match(/<h[1-4][^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)
-                      || blockHtml.match(/<a[^>]*class="[^"]*title[^"]*"[^>]*>([\s\S]*?)<\/a>/i)
-                      || blockHtml.match(/<a[^>]*>([\s\S]*?)<\/a>/i);
-      const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
-      if (!title) continue;
-
-      // Extract date
-      const dateMatch = blockHtml.match(/<time[^>]*datetime=["']([^"']+)["']/i)
-                     || blockHtml.match(/<time[^>]*>([\w]+ \d+,? \d{4})<\/time>/i)
-                     || blockHtml.match(/(\w{3,9} \d{1,2},? \d{4})/);
+      // Try to find a nearby date in the surrounding HTML
+      const pos = m.index;
+      const surrounding = html.slice(Math.max(0, pos - 300), pos + 300);
+      const dateMatch = surrounding.match(/<time[^>]*datetime=["']([^"']+)["']/i)
+                     || surrounding.match(/(\w{3,9} \d{1,2},? \d{4})/);
       const date = dateMatch ? dateMatch[1] : '';
 
-      // Extract image
-      const imgMatch = blockHtml.match(/<img[^>]+src=["']([^"']+)["']/i);
-      const image = imgMatch ? imgMatch[1] : null;
-
-      // Extract snippet
-      const snippetMatch = blockHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
-      const snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]+>/g, '').trim() : '';
-
-      articles.push({ title, url, snippet, source, date, image, dateMs: date ? new Date(date).getTime() : 0 });
+      candidates.push({ title: linkText, url: href, source, date, snippet: '', image: null, dateMs: date ? new Date(date).getTime() : 0 });
     }
-    return articles;
+
+    return candidates.slice(0, 10);
   } catch (e) {
     return [];
   }
@@ -73,11 +71,10 @@ exports.handler = async function() {
     const allItems = [];
     const seenUrls = new Set();
 
-    // 1. Google News RSS — general web
+    // 1. Google News RSS
     try {
       const encoded = encodeURIComponent('"Prairie City Bakery"');
-      const rssUrl = `https://news.google.com/rss/search?q=${encoded}&hl=en-US&gl=US&ceid=US:en`;
-      const res = await fetch(rssUrl);
+      const res = await fetch(`https://news.google.com/rss/search?q=${encoded}&hl=en-US&gl=US&ceid=US:en`);
       if (res.ok) {
         const xml = await res.text();
         const itemMatches = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
@@ -100,14 +97,14 @@ exports.handler = async function() {
       }
     } catch(e) {}
 
-    // 2. Direct site searches
-    const siteSearches = [
-      { searchUrl: 'https://csnews.com/?s=prairie+city+bakery', source: 'CSNews', baseUrl: 'https://csnews.com', articlePattern: /<article[\s\S]*?<\/article>/gi },
-      { searchUrl: 'https://www.cspdailynews.com/search?q=prairie+city+bakery', source: 'CSP Daily News', baseUrl: 'https://www.cspdailynews.com', articlePattern: /<article[\s\S]*?<\/article>/gi },
-      { searchUrl: 'https://cstoredecisions.com/?s=prairie+city+bakery', source: 'C-Store Decisions', baseUrl: 'https://cstoredecisions.com', articlePattern: /<article[\s\S]*?<\/article>/gi },
+    // 2. Direct site scrapes
+    const sites = [
+      { url: 'https://csnews.com/?s=prairie+city+bakery',              source: 'CSNews',           base: 'https://csnews.com' },
+      { url: 'https://www.cspdailynews.com/search?q=prairie+city+bakery', source: 'CSP Daily News', base: 'https://www.cspdailynews.com' },
+      { url: 'https://cstoredecisions.com/?s=prairie+city+bakery',     source: 'C-Store Decisions', base: 'https://cstoredecisions.com' },
     ];
 
-    const siteResults = await Promise.all(siteSearches.map(s => scrapeSite(s)));
+    const siteResults = await Promise.all(sites.map(s => scrapeSite(s.url, s.source, s.base)));
     for (const results of siteResults) {
       for (const a of results) {
         if (!a.url || seenUrls.has(a.url)) continue;
@@ -120,9 +117,15 @@ exports.handler = async function() {
     allItems.sort((a, b) => b.dateMs - a.dateMs);
     const top = allItems.slice(0, 20);
 
-    // Enrich with OG images in parallel for those missing one
+    // Enrich with OG data in parallel (title/snippet/image from the actual article page)
     await Promise.all(top.map(async (a) => {
-      if (!a.image) a.image = await fetchOG(a.url);
+      if (!a.image || !a.snippet) {
+        const og = await fetchOG(a.url);
+        if (!a.image)   a.image   = og.image   || null;
+        if (!a.snippet) a.snippet = og.snippet  || '';
+        if (!a.title || a.title.length < 15) a.title = og.title || a.title;
+        if (!a.date)    a.date    = og.date     || '';
+      }
     }));
 
     const articles = top.map(({ dateMs, ...a }) => a);
