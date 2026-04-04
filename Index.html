@@ -1090,7 +1090,7 @@ function renderFilters(){
      <button class="filter-pill ${activeFilter==='__shared__'?'active':''}" data-filter="__shared__" onclick="setFilter('__shared__',this)">&#10003; Shared</button>
      <button class="filter-pill ${activeFilter==='__mine__'?'active':''}" data-filter="__mine__" onclick="setFilter('__mine__',this)">My Events</button>
      ${mode==='manager'?`<button class="filter-pill ${showCompleted?'active':''}" onclick="toggleCompleted(this)">Show Completed</button>`:''}
-     <input class="search-input" type="text" placeholder="Search events..." id="searchInput" oninput="render()"/>`;
+     <input class="search-input" type="text" placeholder="Search events..." id="searchInput" oninput="render(true)"/>`;
 }
 
 // ════ STATS / STAGE FILTER ════════════════════════
@@ -1142,8 +1142,9 @@ function renderUpcoming(){
 }
 
 // ════ RENDER DISPATCHER ════════════════════════════
-function render(){
-  renderFilters();renderStats();renderUpcoming();
+function render(skipFilters=false){
+  if(!skipFilters) renderFilters();
+  renderStats();renderUpcoming();
   updateReqBadge();
   if(calView==='list') renderList();
   else if(calView==='cal') renderCalGrid();
