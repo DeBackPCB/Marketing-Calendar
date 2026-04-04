@@ -1095,6 +1095,8 @@ function renderFilters(){
 
 // ════ STATS / STAGE FILTER ════════════════════════
 function renderStats(){
+  const bar=document.getElementById('statsRow');
+  if(mode==='sales'&&calView!=='requests'){bar.innerHTML='';return;}
   // In requests view, show simple Open / Completed counts for the visible requests
   if(calView==='requests'){
     const me=currentName||(currentUser?.email?.split('@')[0]||'');
