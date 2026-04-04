@@ -1291,9 +1291,10 @@ function getSubmitter(notes){
 }
 
 function mgrCard(e){
-  const d=new Date(e.date+'T00:00:00'),mon=d.toLocaleString('default',{month:'short'}).toUpperCase(),day=d.getDate();
+  const displayDate=e.runDate||e.date;
+  const d=new Date(displayDate+'T00:00:00'),mon=d.toLocaleString('default',{month:'short'}).toUpperCase(),day=d.getDate();
   const c=tColor(e.type),rf=e.runDate?new Date(e.runDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
-  const endFmt=e.endDate?new Date(e.endDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+  const startD=new Date(e.date+'T00:00:00');
   const sc='status-'+e.status.toLowerCase().replace(' ','-');
   const chips=renderFileIcons(e,true);
   const submitter=getSubmitter(e.notes);
@@ -1305,7 +1306,7 @@ function mgrCard(e){
       ${e.salesSubmitted?'<span class="sales-submitted-badge">Sales Submitted</span>':''}
     </div>
     <div class="event-meta">
-      ${endFmt?`<span class="date-range">&#9679; ${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} &rarr; ${endFmt}</span>`:''}
+      ${endFmt?`<span class="date-range">&#9679; ${startD.toLocaleDateString('en-US',{month:'short',day:'numeric'})} &rarr; ${endFmt}</span>`:''}
       ${rf?`<span class="run-label">&#9654; Run: ${rf}</span>`:''}
     </div>
     ${submitter?`<div class="submitter-byline" style="margin-top:3px;">&#128100; ${submitter}</div>`:''}
