@@ -20,30 +20,43 @@ exports.handler = async function() {
       }).toString()
     });
     const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) throw new Error('Failed to refresh token: ' + JSON.stringify(tokenData));
+    if (!tokenData.access_token) {
+      return { statusCode: 500, body: JSON.stringify({ error: 'Token refresh failed', detail: tokenData }) };
+    }
     const auth = `Zoho-oauthtoken ${tokenData.access_token}`;
 
-    // 2. Get portals to find the portal ID
+    // 2. Get portals
     const portalsRes = await fetch('https://www.zohoapis.com/social/v1/portals', {
       headers: { Authorization: auth }
     });
-    const portalsData = await portalsRes.json();
-    if (!portalsData.portals?.length) throw new Error('No Zoho Social portals found');
-    const portalId = portalsData.portals[0].zsoid || portalsData.portals[0].id;
+    const portalsRaw = await portalsRes.text();
+    let portalsData;
+    try { portalsData = JSON.parse(portalsRaw); } catch(e) {
+      return { statusCode: 500, body: JSON.stringify({ error: 'Portals parse error', detail: portalsRaw }) };
+    }
+    if (!portalsData.portals?.length) {
+      return { statusCode: 500, body: JSON.stringify({ error: 'No portals found', detail: portalsData }) };
+    }
+    const portal = portalsData.portals[0];
+    const portalId = portal.zsoid || portal.portal_id || portal.id;
 
-    // 3. Fetch posts (scheduled + published)
+    // 3. Fetch posts
     const postsRes = await fetch(
       `https://www.zohoapis.com/social/v1/${portalId}/posts?count=200`,
       { headers: { Authorization: auth } }
     );
-    const postsData = await postsRes.json();
+    const postsRaw = await postsRes.text();
+    let postsData;
+    try { postsData = JSON.parse(postsRaw); } catch(e) {
+      return { statusCode: 500, body: JSON.stringify({ error: 'Posts parse error', detail: postsRaw }) };
+    }
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(postsData.posts || [])
+      body: JSON.stringify(postsData.posts || postsData)
     };
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message, stack: err.stack }) };
   }
 };

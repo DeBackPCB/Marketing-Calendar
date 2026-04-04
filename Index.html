@@ -1727,7 +1727,7 @@ async function syncZohoSocial(){
     const res=await fetch('/.netlify/functions/zoho-social');
     if(!res.ok) throw new Error(`Server error ${res.status}`);
     const posts=await res.json();
-    if(posts.error) throw new Error(posts.error);
+    if(posts.error) throw new Error(posts.error + (posts.detail ? ' — ' + JSON.stringify(posts.detail) : ''));
     const statusMap={schedule:'Published',published:'Completed',draft:'Draft'};
     const existingIds=new Set(events.map(e=>{const m=(e.notes||'').match(/Zoho Post ID: (\S+)/);return m?m[1]:null;}).filter(Boolean));
     let added=0;
