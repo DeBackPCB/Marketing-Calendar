@@ -870,7 +870,7 @@ async function afterLogin(){
   const isMgr=currentRole==='manager';
   // Show/hide all header elements based on role
   document.getElementById('modeToggle').style.display=isMgr?'flex':'none';
-  document.getElementById('mgrViewToggle').style.display=isMgr?'flex':'none';
+  document.getElementById('mgrViewToggle').style.display='flex';
   document.getElementById('mgrTools').style.display=isMgr?'flex':'none';
   document.getElementById('salesBadge').style.display=isMgr?'none':'block';
   document.getElementById('salesAddBtn').style.display=isMgr?'none':'flex';
@@ -1018,7 +1018,7 @@ function setMode(m){
   document.getElementById('mgrBtn').classList.toggle('active',mode==='manager');
   document.getElementById('salesBtn').classList.toggle('active',mode==='sales');
   document.getElementById('mgrTools').style.display=mode==='manager'?'flex':'none';
-  document.getElementById('mgrViewToggle').style.display=mode==='manager'?'flex':'none';
+  document.getElementById('mgrViewToggle').style.display='flex';
   document.getElementById('salesBadge').style.display=mode==='manager'?'none':'block';
   document.getElementById('salesAddBtn').style.display=mode==='manager'?'none':'flex';
   document.getElementById('mktRequestBtn').style.display=mode==='manager'?'none':'flex';
