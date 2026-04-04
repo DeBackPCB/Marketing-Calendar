@@ -18,9 +18,15 @@ async function fetchOG(url) {
 
 exports.handler = async function() {
   try {
+    const brand = '"Prairie City Bakery"';
+    const tradeSites = [
+      'cspdailynews.com', 'csnews.com', 'cstoredecisions.com',
+      'convenience.org', 'nrn.com', 'foodbusinessnews.net',
+      'progressivegrocer.com', 'supermarketnews.com'
+    ];
     const queries = [
-      '"Prairie City Bakery"',
-      '"Prairie City Bakery" site:cspdailynews.com OR site:csnews.com OR site:cstoredecisions.com OR site:convenience.org OR site:nrn.com OR site:foodbusinessnews.net OR site:progressivegrocer.com OR site:supermarketnews.com'
+      brand,
+      ...tradeSites.map(site => `${brand} site:${site}`)
     ];
 
     const allItems = [];
