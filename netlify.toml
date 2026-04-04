@@ -1,9 +1,13 @@
 [build]
   publish = "."
+  command = "npm install"
 
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
 [functions."mailchimp"]
+  node_version = "18"
+
+[functions."news-search"]
   node_version = "18"

@@ -1,39 +1,35 @@
+const { DOMParser } = require('@xmldom/xmldom');
+
 exports.handler = async function() {
-  const apiKey = (process.env.GOOGLE_SEARCH_API_KEY || '').trim();
-  const cx     = (process.env.GOOGLE_SEARCH_CX     || '').trim();
-
-  if (!apiKey || !cx) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Google Search credentials not configured', has: { apiKey: !!apiKey, cx: !!cx } })
-    };
-  }
-
   try {
     const query = encodeURIComponent('"Prairie City Bakery"');
-    const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cx}&q=${query}&num=10&dateRestrict=m6&sort=date`;
+    const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
+
     const res = await fetch(url);
-    const data = await res.json();
+    if (!res.ok) throw new Error(`RSS fetch failed: ${res.status}`);
+    const xml = await res.text();
 
-    if (data.error) {
-      return { statusCode: 500, body: JSON.stringify({ error: data.error.message }) };
-    }
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xml, 'text/xml');
+    const items = Array.from(doc.getElementsByTagName('item')).slice(0, 15);
 
-    const items = (data.items || []).map(item => ({
-      title:   item.title,
-      snippet: item.snippet,
-      url:     item.link,
-      source:  item.displayLink,
-      image:   item.pagemap?.cse_image?.[0]?.src || item.pagemap?.cse_thumbnail?.[0]?.src || null,
-      date:    item.pagemap?.metatags?.[0]?.['article:published_time']
-            || item.pagemap?.metatags?.[0]?.['og:updated_time']
-            || null
-    }));
+    const articles = items.map(item => {
+      const get = tag => item.getElementsByTagName(tag)[0]?.textContent || '';
+      const title = get('title');
+      const link  = get('link');
+      const pubDate = get('pubDate');
+      const source = get('source') || new URL(link).hostname.replace('www.','');
+      // Strip HTML from description
+      const rawDesc = get('description');
+      const snippet = rawDesc.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim();
+
+      return { title, url: link, snippet, source, date: pubDate, image: null };
+    });
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(items)
+      body: JSON.stringify(articles)
     };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
