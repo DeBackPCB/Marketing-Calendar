@@ -498,9 +498,7 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--brown-
       <button class="ghost-btn" id="mcSyncBtn" onclick="syncMailchimp()">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Sync MailChimp
       </button>
-      <button class="ghost-btn" id="zohoSyncBtn" onclick="syncZohoSocial()">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Sync Zoho Social
-      </button>
+
 
       <button class="ghost-btn" onclick="openCatModal()">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M7 7h.01M7 12h.01M7 17h.01M11 7h6M11 12h6M11 17h6"/></svg>Categories
@@ -1716,37 +1714,6 @@ async function syncMailchimp(){
   }catch(err){
     alert('MailChimp sync failed: '+err.message);
     btn.disabled=false;btn.textContent='Sync MailChimp';
-  }
-}
-async function syncZohoSocial(){
-  const btn=document.getElementById('zohoSyncBtn');
-  btn.disabled=true;btn.textContent='Syncing…';
-  try{
-    const res=await fetch('/.netlify/functions/zoho-social');
-    const posts=await res.json();
-    if(!res.ok||posts.error) throw new Error((posts.error||'Server error '+res.status)+(posts.detail?' — '+JSON.stringify(posts.detail):''));
-    const statusMap={schedule:'Published',published:'Completed',draft:'Draft'};
-    const existingIds=new Set(events.map(e=>{const m=(e.notes||'').match(/Zoho Post ID: (\S+)/);return m?m[1]:null;}).filter(Boolean));
-    let added=0;
-    for(const p of posts){
-      const postId=p.post_id||p.id;
-      if(!postId||existingIds.has(postId)) continue;
-      const dateStr=p.scheduled_time||p.published_time||p.created_time;
-      if(!dateStr) continue;
-      const date=new Date(dateStr).toISOString().split('T')[0];
-      const title=p.message?(p.message.substring(0,80)+(p.message.length>80?'…':'')):('Zoho Post '+postId);
-      const status=statusMap[p.status]||'Draft';
-      const item={id:uid(),title,type:'Social Media Post',date,endDate:'',runDate:'',status,priority:'Medium',notes:`Zoho Post ID: ${postId}`,attachments:[],comments:[],sharedWithSales:false,salesSubmitted:false};
-      events.push(item);
-      await saveE(item);
-      added++;
-    }
-    btn.textContent=added>0?`✓ ${added} imported`:'✓ Up to date';
-    if(added>0) render();
-    setTimeout(()=>{btn.disabled=false;btn.textContent='Sync Zoho Social';},3000);
-  }catch(err){
-    alert('Zoho Social sync failed: '+err.message);
-    btn.disabled=false;btn.textContent='Sync Zoho Social';
   }
 }
 function resetUpload(){parsedRows=[];['uploadPreview','uploadInfo','uploadError'].forEach(id=>{const el=document.getElementById(id);el.style.display='none';el.innerHTML='';});document.getElementById('importBtn').style.display='none';document.getElementById('xlsxInput').value='';}
