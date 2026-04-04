@@ -1266,10 +1266,11 @@ async function toggleRequestComplete(id){
 function renderList(){
   const filtered=getFiltered(),container=document.getElementById('listView');
   const today=new Date();today.setHours(0,0,0,0);
+  const monthStart=new Date(today.getFullYear(),today.getMonth(),1);
   if(!filtered.length){container.innerHTML=empty();return;}
-  // Filter out past/completed events in sales view only
+  // In sales view, show current month and future events (hide past months); also hide completed
   const sorted = mode==='sales'
-    ? filtered.filter(e=>e.status!=='Completed' && new Date((e.runDate||e.date)+'T00:00:00')>=today)
+    ? filtered.filter(e=>e.status!=='Completed' && new Date((e.runDate||e.date)+'T00:00:00')>=monthStart)
     : filtered;
   const groups={};
   sorted.forEach(e=>{const d=new Date((e.runDate||e.date)+'T00:00:00'),k=d.toLocaleString('default',{month:'long',year:'numeric'});(groups[k]=groups[k]||[]).push(e);});
