@@ -1846,7 +1846,8 @@ function saveManualArticle(){
   if(!data){alert('No article loaded.');return;}
   const articles=loadManualArticles();
   if(articles.some(a=>a.url===data.url)){alert('This article is already in the list.');return;}
-  articles.push({...data,manual:true,addedAt:new Date().toISOString()});
+  const now=new Date().toISOString();
+  articles.push({...data,date:data.date||now,manual:true,addedAt:now});
   saveManualArticles(articles);
   closeAddArticle();
   // Re-render with existing cache + new manual article
