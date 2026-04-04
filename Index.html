@@ -1752,6 +1752,8 @@ async function syncMailchimp(){
 let newsCache=null;let newsCacheTime=0;
 function loadManualArticles(){try{return JSON.parse(localStorage.getItem('pcb_manual_articles')||'[]');}catch{return[];}}
 function saveManualArticles(arr){localStorage.setItem('pcb_manual_articles',JSON.stringify(arr));}
+function loadHiddenArticles(){try{return new Set(JSON.parse(localStorage.getItem('pcb_hidden_articles')||'[]'));}catch{return new Set();}}
+function hideArticle(url){const h=loadHiddenArticles();h.add(url);localStorage.setItem('pcb_hidden_articles',JSON.stringify([...h]));}
 
 async function renderNews(forceRefresh=false){
   const el=document.getElementById('newsView');
@@ -1773,7 +1775,8 @@ async function renderNews(forceRefresh=false){
 
 function newsHTML(autoArticles){
   const manual=loadManualArticles();
-  const all=[...autoArticles,...manual].sort((a,b)=>{
+  const hidden=loadHiddenArticles();
+  const all=[...autoArticles,...manual].filter(a=>!hidden.has(a.url)).sort((a,b)=>{
     const da=a.date?new Date(a.date).getTime():0;
     const db=b.date?new Date(b.date).getTime():0;
     return db-da;
@@ -1802,7 +1805,8 @@ function newsHTML(autoArticles){
   for(const a of all){
     const dateStr=a.date?new Date(a.date).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}):'';
     const img=a.image?`<img class="news-card-img" src="${a.image}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="news-card-img-placeholder" style="display:none">📰</div>`:`<div class="news-card-img-placeholder">📰</div>`;
-    const del=a.manual?`<button onclick="removeManualArticle('${a.url.replace(/'/g,"\\'")}');renderNews()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:.8rem;cursor:pointer;line-height:24px;text-align:center;">×</button>`:'';
+    const delFn=a.manual?`removeManualArticle('${a.url.replace(/'/g,"\\'")}')`:`hideArticle('${a.url.replace(/'/g,"\\'")}')`;
+    const del=`<button onclick="${delFn};renderNews()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:.8rem;cursor:pointer;line-height:24px;text-align:center;" title="Remove">×</button>`;
     const readLink=a.manual?`<a href="${a.url}" target="_blank" rel="noopener" style="font-size:.75rem;color:var(--red);font-weight:600;text-decoration:none;margin-top:6px;display:inline-block;">Read Article →</a>`:'';
     html+=`<div class="news-card" style="position:relative;">${img}${del}<div class="news-card-body"><div class="news-card-source">${a.source}${a.manual?' <span style="font-size:.65rem;background:var(--gold);color:var(--brown-dark);padding:1px 5px;border-radius:4px;margin-left:4px;">Added</span>':''}</div><a class="news-card-title" href="${a.url}" target="_blank" rel="noopener">${a.title}</a><div class="news-card-snippet">${a.snippet}</div>${dateStr?`<div class="news-card-date">${dateStr}</div>`:''} ${readLink}</div></div>`;
   }
