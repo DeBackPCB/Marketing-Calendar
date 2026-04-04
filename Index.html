@@ -1295,6 +1295,7 @@ function mgrCard(e){
   const d=new Date(displayDate+'T00:00:00'),mon=d.toLocaleString('default',{month:'short'}).toUpperCase(),day=d.getDate();
   const c=tColor(e.type),rf=e.runDate?new Date(e.runDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
   const startD=new Date(e.date+'T00:00:00');
+  const endFmt=e.endDate?new Date(e.endDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
   const sc='status-'+e.status.toLowerCase().replace(' ','-');
   const chips=renderFileIcons(e,true);
   const submitter=getSubmitter(e.notes);
