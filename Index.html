@@ -675,7 +675,7 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--brown-
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('salesOverlay')">Cancel</button>
-      <button class="btn-save" style="background:#1565c0;" onclick="saveSalesItem()">Submit</button>
+      <button class="btn-save" id="salesSubmitBtn" style="background:#1565c0;" onclick="saveSalesItem()">Submit</button>
     </div>
   </div></div>
 </div>
@@ -1767,14 +1767,27 @@ function renderSalesPending(){
 }
 
 async function saveSalesItem(){
+  const btn=document.getElementById('salesSubmitBtn');
+  if(btn.disabled)return;
   const title=document.getElementById('s-title').value.trim(),date=document.getElementById('s-date').value;
   if(!title||!date){alert('Please fill in a name and start date.');return;}
+  btn.disabled=true;btn.textContent='Submitting…';
   const submitterName=currentName||(currentUser?.email?.split('@')[0]||'Sales');
   const baseNotes=document.getElementById('s-notes').value.trim();
   const notes=`Submitted by: ${submitterName}${baseNotes?'\n'+baseNotes:''}`;
-  const item={id:uid(),title,type:document.getElementById('s-type').value,date,endDate:document.getElementById('s-enddate').value,runDate:'',status:'In Review',priority:'Medium',notes,attachments:[...salesPendingAttach],sharedWithSales:true,salesSubmitted:true};
+  const item={id:uid(),title,type:document.getElementById('s-type').value,date,endDate:document.getElementById('s-enddate').value,runDate:'',status:'In Review',priority:'Medium',notes,attachments:[...salesPendingAttach],sharedWithSales:true,salesSubmitted:true,comments:[]};
   events.push(item);
-  await saveE(item);closeModal('salesOverlay');render();
+  try{
+    await saveE(item);
+    closeModal('salesOverlay');render();
+  }catch(err){
+    events=events.filter(x=>x.id!==item.id);
+    const msg=err?.message||String(err);
+    const isSize=msg.includes('413')||msg.includes('too large')||msg.includes('payload');
+    alert(isSize?'Submission failed: the attachment is too large. Try a smaller file or remove it and try again.':'Submission failed: '+msg);
+  }finally{
+    btn.disabled=false;btn.textContent='Submit';
+  }
 }
 
 // ════ PROFILE ═════════════════════════════════════
