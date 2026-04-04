@@ -1252,10 +1252,10 @@ function renderList(){
   const filtered=getFiltered(),container=document.getElementById('listView');
   const today=new Date();today.setHours(0,0,0,0);
   if(!filtered.length){container.innerHTML=empty();return;}
-  // Filter out past events; also exclude completed events in sales view
+  // Filter out past/completed events in sales view only
   const sorted = mode==='sales'
     ? filtered.filter(e=>e.status!=='Completed' && new Date((e.runDate||e.date)+'T00:00:00')>=today)
-    : filtered.filter(e=>new Date((e.runDate||e.date)+'T00:00:00')>=today);
+    : filtered;
   const groups={};
   sorted.forEach(e=>{const d=new Date((e.runDate||e.date)+'T00:00:00'),k=d.toLocaleString('default',{month:'long',year:'numeric'});(groups[k]=groups[k]||[]).push(e);});
   container.innerHTML=Object.entries(groups).map(([mo,evts])=>`
