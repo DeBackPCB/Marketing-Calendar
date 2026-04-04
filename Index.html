@@ -1133,7 +1133,8 @@ function renderUpcoming(){
   const bar=document.getElementById('upcomingBar');
   if(mode!=='sales'){bar.innerHTML='';return;}
   const today=new Date();today.setHours(0,0,0,0);
-  const next=events.filter(e=>(e.sharedWithSales||e.salesSubmitted)&&e.status!=='Completed').find(e=>new Date((e.runDate||e.date)+'T00:00:00')>=today);
+  const _me=currentName||(currentUser?.email?.split('@')[0]||'');
+  const next=events.filter(e=>(e.sharedWithSales||(e.salesSubmitted&&getSubmitter(e.notes)===_me))&&e.status!=='Completed').find(e=>new Date((e.runDate||e.date)+'T00:00:00')>=today);
   if(!next){bar.innerHTML='';return;}
   const rd=new Date((next.runDate||next.date)+'T00:00:00');
   const diff=Math.round((rd-today)/864e5);
