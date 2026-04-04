@@ -20,7 +20,7 @@ exports.handler = async function() {
   try {
     const queries = [
       '"Prairie City Bakery"',
-      '"Prairie City Bakery" site:cspdailynews.com OR site:convenience.org OR site:nrn.com OR site:foodbusinessnews.net OR site:progressivegrocer.com OR site:supermarketnews.com'
+      '"Prairie City Bakery" site:cspdailynews.com OR site:csnews.com OR site:cstoredecisions.com OR site:convenience.org OR site:nrn.com OR site:foodbusinessnews.net OR site:progressivegrocer.com OR site:supermarketnews.com'
     ];
 
     const allItems = [];
