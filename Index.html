@@ -189,7 +189,7 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--brown-
 .cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);background:var(--red-dark);}
 .cal-dow{padding:7px 4px;text-align:center;font-size:.61rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.78);}
 .cal-days{display:grid;grid-template-columns:repeat(7,1fr);}
-.cal-cell{border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:104px;padding:5px;transition:background .15s;cursor:pointer;}
+.cal-cell{border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:104px;padding:5px;transition:background .15s;cursor:pointer;min-width:0;overflow:hidden;}
 .cal-cell:nth-child(7n){border-right:none;}
 .cal-cell.other-month{background:#faf7f3;}
 .cal-cell.other-month .cal-day-num{color:#ccc;}
@@ -197,7 +197,7 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--brown-
 .cal-cell.today .cal-day-num{background:var(--red-dark);color:white;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:700;}
 .cal-cell:hover{background:#fdf4ea;}
 .cal-day-num{font-size:.73rem;font-weight:600;color:var(--brown-mid);margin-bottom:3px;min-height:20px;display:flex;align-items:center;}
-.cal-pill{font-size:.6rem;font-weight:600;padding:2px 4px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.35;}
+.cal-pill{font-size:.6rem;font-weight:600;padding:2px 4px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.35;max-width:100%;display:block;}
 .cal-pill:hover{opacity:.75;}
 .cal-more{font-size:.59rem;color:var(--brown-light);font-weight:600;padding:1px 3px;}
 .cal-more:hover{color:var(--red);}
