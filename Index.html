@@ -1095,6 +1095,17 @@ function renderFilters(){
 
 // ════ STATS / STAGE FILTER ════════════════════════
 function renderStats(){
+  // In requests view, show simple Open / Completed counts for the visible requests
+  if(calView==='requests'){
+    const me=currentName||(currentUser?.email?.split('@')[0]||'');
+    const reqs=events.filter(e=>e.type==='Marketing Request'&&(mode!=='sales'||parseRequestNotes(e.notes).requester===me));
+    const openCount=reqs.filter(e=>e.status!=='Completed').length;
+    const doneCount=reqs.filter(e=>e.status==='Completed').length;
+    document.getElementById('statsRow').innerHTML=`
+      <div class="stat-card"><div class="stat-icon" style="background:#fdecea"><svg fill="none" viewBox="0 0 24 24" stroke="#c8102e" stroke-width="2.5"><path stroke-linecap="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div><div class="stat-num">${openCount}</div><div class="stat-lbl">Open</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:#e6f4ed"><svg fill="none" viewBox="0 0 24 24" stroke="#2d7a4f" stroke-width="2.5"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg></div><div><div class="stat-num">${doneCount}</div><div class="stat-lbl">Completed</div></div></div>`;
+    return;
+  }
   const stages=[
     {key:'all',        label:'All',        color:'#c8102e', bg:'#fdecea'},
     {key:'Draft',      label:'Draft',      color:'#888',    bg:'#f0f0ee'},
@@ -1102,8 +1113,9 @@ function renderStats(){
     {key:'Published',  label:'Published',  color:'#1565c0', bg:'#e8f4fd'},
     {key:'Completed',  label:'Completed',  color:'#2d7a4f', bg:'#e6f4ed'},
   ];
+  const me=currentName||(currentUser?.email?.split('@')[0]||'');
   const base = mode==='sales'
-    ? events.filter(e=>e.sharedWithSales||e.salesSubmitted)
+    ? events.filter(e=>e.sharedWithSales||(e.salesSubmitted&&getSubmitter(e.notes)===me))
     : events;
   document.getElementById('statsRow').innerHTML = stages.map(({key,label,color,bg})=>{
     const count = key==='all' ? base.length : base.filter(e=>e.status===key).length;
@@ -1155,7 +1167,8 @@ function render(skipFilters=false){
 function updateReqBadge(){
   const badge=document.getElementById('reqBadge');
   if(!badge) return;
-  const open=events.filter(e=>e.type==='Marketing Request'&&e.status!=='Completed').length;
+  const me=currentName||(currentUser?.email?.split('@')[0]||'');
+  const open=events.filter(e=>e.type==='Marketing Request'&&e.status!=='Completed'&&(mode!=='sales'||parseRequestNotes(e.notes).requester===me)).length;
   badge.textContent=open;
   badge.style.display=open>0?'inline-block':'none';
 }
