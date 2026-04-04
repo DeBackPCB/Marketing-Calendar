@@ -1809,9 +1809,10 @@ function newsHTML(autoArticles){
   return html;
 }
 
+let _pendingArticle=null;
 function openAddArticle(){document.getElementById('addArticleForm').style.display='block';document.getElementById('articleUrlInput').focus();}
-function closeAddArticle(){document.getElementById('addArticleForm').style.display='none';document.getElementById('articleUrlInput').value='';document.getElementById('articlePreview').innerHTML='';}
-function clearArticlePreview(){document.getElementById('articlePreview').innerHTML='';}
+function closeAddArticle(){document.getElementById('addArticleForm').style.display='none';document.getElementById('articleUrlInput').value='';document.getElementById('articlePreview').innerHTML='';_pendingArticle=null;}
+function clearArticlePreview(){document.getElementById('articlePreview').innerHTML='';_pendingArticle=null;}
 
 async function fetchArticlePreview(){
   const url=document.getElementById('articleUrlInput').value.trim();
@@ -1822,6 +1823,7 @@ async function fetchArticlePreview(){
     const res=await fetch('/.netlify/functions/fetch-article?url='+encodeURIComponent(url));
     const data=await res.json();
     if(!res.ok||data.error) throw new Error(data.error||'Could not fetch article');
+    _pendingArticle=data;
     const dateStr=data.date?new Date(data.date).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}):'';
     const img=data.image?`<img src="${data.image}" style="width:100%;height:140px;object-fit:cover;border-radius:8px;margin-bottom:10px;" onerror="this.style.display='none'">`:'';
     document.getElementById('articlePreview').innerHTML=`
@@ -1831,7 +1833,7 @@ async function fetchArticlePreview(){
         <div style="font-weight:700;font-size:.9rem;color:var(--brown-dark);margin-bottom:6px;">${data.title}</div>
         <div style="font-size:.8rem;color:var(--brown-mid);margin-bottom:10px;">${data.snippet}</div>
         ${dateStr?`<div style="font-size:.72rem;color:var(--brown-light);margin-bottom:10px;">${dateStr}</div>`:''}
-        <button onclick="saveManualArticle(${JSON.stringify(JSON.stringify(data))})" style="padding:8px 18px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;">Add to News</button>
+        <button onclick="saveManualArticle()" style="padding:8px 18px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;">Add to News</button>
       </div>`;
   }catch(err){
     document.getElementById('articlePreview').innerHTML=`<div class="news-error">${err.message}</div>`;
@@ -1839,8 +1841,9 @@ async function fetchArticlePreview(){
   btn.textContent='Fetch Preview';btn.disabled=false;
 }
 
-function saveManualArticle(jsonStr){
-  const data=JSON.parse(jsonStr);
+function saveManualArticle(){
+  const data=_pendingArticle;
+  if(!data){alert('No article loaded.');return;}
   const articles=loadManualArticles();
   if(articles.some(a=>a.url===data.url)){alert('This article is already in the list.');return;}
   articles.push({...data,manual:true,addedAt:new Date().toISOString()});
