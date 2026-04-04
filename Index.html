@@ -875,7 +875,7 @@ async function afterLogin(){
   document.getElementById('salesBadge').style.display=isMgr?'none':'block';
   document.getElementById('salesAddBtn').style.display=isMgr?'none':'flex';
   document.getElementById('mktRequestBtn').style.display=isMgr?'none':'flex';
-  document.getElementById('headerTitle').textContent=isMgr?'Marketing Calendar':'Marketing Schedule';
+  document.getElementById('headerTitle').textContent=isMgr?'Marketing Calendar':'Marketing Calendar';
   document.getElementById('headerSub').innerHTML=isMgr?'Prairie City Bakery &mdash; Internal':'Prairie City Bakery';
   document.getElementById('profileBtn').style.display='flex';
   document.getElementById('profileBtn').title=currentUser?.email||'';
@@ -1022,7 +1022,7 @@ function setMode(m){
   document.getElementById('salesBadge').style.display=mode==='manager'?'none':'block';
   document.getElementById('salesAddBtn').style.display=mode==='manager'?'none':'flex';
   document.getElementById('mktRequestBtn').style.display=mode==='manager'?'none':'flex';
-  document.getElementById('headerTitle').textContent=mode==='manager'?'Marketing Calendar':'Marketing Schedule';
+  document.getElementById('headerTitle').textContent=mode==='manager'?'Marketing Calendar':'Marketing Calendar';
   document.getElementById('headerSub').innerHTML=mode==='manager'?'Prairie City Bakery &mdash; Internal':'Prairie City Bakery';
   // Sales preview banner — only show when a manager is previewing sales view
   const banner=document.getElementById('salesPreviewBanner');
