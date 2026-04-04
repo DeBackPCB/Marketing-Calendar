@@ -98,6 +98,22 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--brown-
 .arrow-col{color:var(--border);}
 .arrow-col svg{width:15px;height:15px;}
 
+/* COMMENTS */
+.comments-section{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
+.comments-heading{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--brown-light);margin-bottom:10px;}
+.comment-item{display:flex;gap:9px;margin-bottom:10px;}
+.comment-avatar{width:28px;height:28px;border-radius:50%;background:var(--caramel);color:white;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.comment-bubble{background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:7px 10px;flex:1;min-width:0;}
+.comment-author{font-size:.67rem;font-weight:700;color:var(--brown-mid);}
+.comment-time{font-size:.6rem;color:#bbb;margin-left:5px;}
+.comment-text{font-size:.78rem;color:var(--brown-dark);margin-top:2px;white-space:pre-wrap;word-break:break-word;}
+.no-comments{font-size:.78rem;color:#bbb;margin-bottom:10px;}
+.comment-input-row{display:flex;gap:7px;margin-top:8px;}
+.comment-input-row textarea{flex:1;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-family:'DM Sans',sans-serif;font-size:.8rem;resize:none;height:52px;}
+.comment-input-row textarea:focus{outline:none;border-color:var(--caramel);}
+.comment-submit-btn{background:var(--red-dark);color:white;border:none;border-radius:7px;padding:0 14px;font-size:.75rem;font-weight:600;cursor:pointer;}
+.comment-submit-btn:hover{background:var(--red);}
+
 /* SHARED CARD PARTS */
 .date-block{text-align:center;background:var(--cream);border-radius:6px;padding:5px 3px;border:1px solid var(--border);}
 .date-month{font-size:.53rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--red);}
@@ -906,6 +922,7 @@ function rowToEvent(r){
     sharedWithSales: !!r.shared_with_sales,
     salesSubmitted: !!r.sales_submitted,
     attachments,
+    comments: JSON.parse(r.comments_json||'[]'),
   };
 }
 
@@ -924,6 +941,7 @@ function eventToRow(e){
     shared_with_sales: !!e.sharedWithSales,
     sales_submitted: !!e.salesSubmitted,
     attachments_json: JSON.stringify(e.attachments||[]),
+    comments_json: JSON.stringify(e.comments||[]),
   };
 }
 
@@ -1054,7 +1072,8 @@ function getFiltered(includeCompleted=false){
     if(mode==='sales'&&!e.sharedWithSales&&!e.salesSubmitted) return false;
     if(mode==='manager'&&!includeCompleted&&!showCompleted&&activeStatFilter!=='Completed'&&e.status==='Completed') return false;
     if(activeFilter==='__shared__'&&!e.sharedWithSales) return false;
-    else if(activeFilter!=='all'&&activeFilter!=='__shared__'&&e.type!==activeFilter) return false;
+    else if(activeFilter==='__mine__'&&getSubmitter(e.notes)!==(currentName||(currentUser?.email?.split('@')[0]||''))) return false;
+    else if(activeFilter!=='all'&&activeFilter!=='__shared__'&&activeFilter!=='__mine__'&&e.type!==activeFilter) return false;
     if(q&&!e.title.toLowerCase().includes(q)&&!(e.notes||'').toLowerCase().includes(q)) return false;
     return true;
   }).sort((a,b)=>new Date(a.runDate||a.date)-new Date(b.runDate||b.date));
@@ -1068,6 +1087,7 @@ function renderFilters(){
      ${allTypes().map(t=>`<button class="filter-pill ${activeFilter===t.name?'active':''}" data-filter="${esc(t.name)}" onclick="setFilter('${esc(t.name)}',this)">${t.name}</button>`).join('')}
      <div class="filter-sep"></div>
      <button class="filter-pill ${activeFilter==='__shared__'?'active':''}" data-filter="__shared__" onclick="setFilter('__shared__',this)">&#10003; Shared</button>
+     <button class="filter-pill ${activeFilter==='__mine__'?'active':''}" data-filter="__mine__" onclick="setFilter('__mine__',this)">My Events</button>
      ${mode==='manager'?`<button class="filter-pill ${showCompleted?'active':''}" onclick="toggleCompleted(this)">Show Completed</button>`:''}
      <input class="search-input" type="text" placeholder="Search events..." id="searchInput" oninput="render()"/>`;
 }
@@ -1362,6 +1382,31 @@ function showPop(ev,id){
 function closePop(){document.getElementById('popover').style.display='none';popId=null;}
 document.addEventListener('click',e=>{const p=document.getElementById('popover');if(p.style.display==='block'&&!p.contains(e.target))closePop();});
 
+// ════ COMMENTS ════════════════════════════════════════
+function commentsHTML(e){
+  const comments=e.comments||[];
+  const list=comments.length
+    ? comments.map(c=>{
+        const initials=c.author.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?';
+        const d=new Date(c.ts);
+        const time=d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+        return `<div class="comment-item"><div class="comment-avatar">${initials}</div><div class="comment-bubble"><div><span class="comment-author">${c.author}</span><span class="comment-time">${time}</span></div><div class="comment-text">${c.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div></div>`;
+      }).join('')
+    : '<div class="no-comments">No comments yet.</div>';
+  return `<div class="comments-section" id="comments-section-${e.id}"><div class="comments-heading">Comments (${comments.length})</div>${list}<div class="comment-input-row"><textarea id="comment-input-${e.id}" placeholder="Add a comment..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addComment('${e.id}')}"></textarea><button class="comment-submit-btn" onclick="addComment('${e.id}')">Post</button></div></div>`;
+}
+async function addComment(id){
+  const e=events.find(x=>x.id===id);if(!e)return;
+  const inp=document.getElementById('comment-input-'+id);
+  const text=(inp?.value||'').trim();if(!text)return;
+  const author=currentName||(currentUser?.email?.split('@')[0]||'Anonymous');
+  e.comments=e.comments||[];
+  e.comments.push({id:uid(),author,text,ts:new Date().toISOString()});
+  await saveE(e);
+  const section=document.getElementById('comments-section-'+id);
+  if(section)section.outerHTML=commentsHTML(e);
+}
+
 // ════ SALES DETAIL ════════════════════════════════
 function openDetail(id){
   const e=events.find(x=>x.id===id);if(!e)return;
@@ -1381,7 +1426,8 @@ function openDetail(id){
     <div class="detail-row"><div class="detail-icon" style="background:#fdecea"><svg fill="none" viewBox="0 0 24 24" stroke="#c8102e" stroke-width="2"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg></div>
     <div style="flex:1"><div class="detail-label">Files &amp; Attachments</div>
       ${e.attachments&&e.attachments.length?`<div class="file-icons-row" style="margin-top:8px;">${e.attachments.map(a=>`<div class="file-icon-chip" onclick="openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join('')}</div>`:'<div class="no-attach">No files attached</div>'}
-    </div></div>`;
+    </div></div>
+    ${commentsHTML(e)}`;
   document.getElementById('detailOverlay').classList.add('open');
 }
 
@@ -1407,6 +1453,7 @@ function openMgrDetail(id){
     <div style="flex:1"><div class="detail-label">Files &amp; Attachments</div>
       ${e.attachments&&e.attachments.length?`<div class="file-icons-row" style="margin-top:8px;">${e.attachments.map(a=>`<div class="file-icon-chip" onclick="openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join('')}</div>`:'<div class="no-attach">No files attached</div>'}
     </div></div>
+    ${commentsHTML(e)}
     <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
       <button class="pop-btn primary" style="flex:1;padding:8px;" onclick="closeModal('detailOverlay');editEvent('${e.id}')">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline;margin-right:4px;"><path stroke-linecap="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 012.828 2.828L11.828 15.828 8 17l1.172-3.828z"/></svg>Edit Event
