@@ -1841,7 +1841,17 @@ async function fetchArticlePreview(){
         <button onclick="saveManualArticle()" style="padding:8px 18px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;">Add to News</button>
       </div>`;
   }catch(err){
-    document.getElementById('articlePreview').innerHTML=`<div class="news-error">${err.message}</div>`;
+    // Fallback: let user enter title manually
+    const url=document.getElementById('articleUrlInput').value.trim();
+    const hostname=(() => { try { return new URL(url).hostname.replace('www.',''); } catch { return ''; } })();
+    const slugTitle=url.split('/').filter(Boolean).pop()?.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase())||'';
+    _pendingArticle={title:slugTitle,url,snippet:'',image:null,source:hostname,date:''};
+    document.getElementById('articlePreview').innerHTML=`
+      <div style="border:1px solid #fcc;border-radius:8px;padding:14px;background:#fff9f9;">
+        <div style="font-size:.8rem;color:#c0392b;margin-bottom:10px;">Could not auto-fetch this page (it may block outside requests). Enter the title manually:</div>
+        <input id="manualTitleInput" value="${slugTitle}" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;margin-bottom:10px;box-sizing:border-box;" oninput="_pendingArticle.title=this.value"/>
+        <button onclick="saveManualArticle()" style="padding:8px 18px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;">Add to News</button>
+      </div>`;
   }
   btn.textContent='Fetch Preview';btn.disabled=false;
 }
