@@ -1725,9 +1725,8 @@ async function syncZohoSocial(){
   btn.disabled=true;btn.textContent='Syncing…';
   try{
     const res=await fetch('/.netlify/functions/zoho-social');
-    if(!res.ok) throw new Error(`Server error ${res.status}`);
     const posts=await res.json();
-    if(posts.error) throw new Error(posts.error + (posts.detail ? ' — ' + JSON.stringify(posts.detail) : ''));
+    if(!res.ok||posts.error) throw new Error((posts.error||'Server error '+res.status)+(posts.detail?' — '+JSON.stringify(posts.detail):''));
     const statusMap={schedule:'Published',published:'Completed',draft:'Draft'};
     const existingIds=new Set(events.map(e=>{const m=(e.notes||'').match(/Zoho Post ID: (\S+)/);return m?m[1]:null;}).filter(Boolean));
     let added=0;
