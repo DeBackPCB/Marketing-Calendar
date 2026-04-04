@@ -1020,7 +1020,7 @@ async function initApp(){
 }
 
 // ════ APP STATE ═══════════════════════════════════
-let mode='manager', calView='list', activeFilter='all', showCompleted=false;
+let mode='manager', calView='list', activeFilters=new Set(['all']), showCompleted=false;
 let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
 let popId=null, editingId=null, pendingAttach=[], parsedRows=[];
 
@@ -1047,7 +1047,7 @@ function setMode(m){
   } else {
     banner.classList.remove('show');
   }
-  activeFilter='all'; showCompleted=false; activeStatFilter='all'; closePop();
+  activeFilters=new Set(['all']); showCompleted=false; activeStatFilter='all'; closePop();
   if(calView==='requests') setCalView('list');
   else render();
 }
@@ -1075,10 +1075,16 @@ function setCalView(v){
 }
 
 // ════ FILTERS ═════════════════════════════════════
-function setFilter(f,el){
-  activeFilter=f;
-  document.querySelectorAll('.filter-pill[data-filter]').forEach(p=>p.classList.remove('active'));
-  if(el)el.classList.add('active'); render();
+function setFilter(f){
+  if(f==='all'){
+    activeFilters=new Set(['all']);
+  } else {
+    activeFilters.delete('all');
+    if(activeFilters.has(f)) activeFilters.delete(f);
+    else activeFilters.add(f);
+    if(activeFilters.size===0) activeFilters=new Set(['all']);
+  }
+  renderFilters(); render(true);
 }
 function toggleCompleted(el){showCompleted=!showCompleted;el.classList.toggle('active',showCompleted);render();}
 function getFiltered(includeCompleted=false){
@@ -1087,9 +1093,10 @@ function getFiltered(includeCompleted=false){
     const _myName=currentName||(currentUser?.email?.split('@')[0]||'');
     if(mode==='sales'&&!e.sharedWithSales&&!(e.salesSubmitted&&getSubmitter(e.notes)===_myName)) return false;
     if(mode==='manager'&&!includeCompleted&&!showCompleted&&activeStatFilter!=='Completed'&&e.status==='Completed') return false;
-    if(activeFilter==='__shared__'&&!e.sharedWithSales) return false;
-    else if(activeFilter==='__mine__'&&getSubmitter(e.notes)!==(currentName||(currentUser?.email?.split('@')[0]||''))) return false;
-    else if(activeFilter!=='all'&&activeFilter!=='__shared__'&&activeFilter!=='__mine__'&&e.type!==activeFilter) return false;
+    if(activeFilters.has('__shared__')&&!e.sharedWithSales) return false;
+    if(activeFilters.has('__mine__')&&getSubmitter(e.notes)!==(currentName||(currentUser?.email?.split('@')[0]||''))) return false;
+    const typeFilters=[...activeFilters].filter(f=>f!=='all'&&f!=='__shared__'&&f!=='__mine__');
+    if(typeFilters.length&&!typeFilters.includes(e.type)) return false;
     if(q&&!e.title.toLowerCase().includes(q)&&!(e.notes||'').toLowerCase().includes(q)) return false;
     return true;
   }).sort((a,b)=>new Date(a.runDate||a.date)-new Date(b.runDate||b.date));
@@ -1099,11 +1106,11 @@ function getFiltered(includeCompleted=false){
 function renderFilters(){
   document.getElementById('filtersBar').innerHTML=
     `<span class="filter-label">Filter</span>
-     <button class="filter-pill ${activeFilter==='all'?'active':''}" data-filter="all" onclick="setFilter('all',this)">All</button>
-     ${allTypes().map(t=>`<button class="filter-pill ${activeFilter===t.name?'active':''}" data-filter="${esc(t.name)}" onclick="setFilter('${esc(t.name)}',this)">${t.name}</button>`).join('')}
+     <button class="filter-pill ${activeFilters.has('all')?'active':''}" data-filter="all" onclick="setFilter('all')">All</button>
+     ${allTypes().map(t=>`<button class="filter-pill ${activeFilters.has(t.name)?'active':''}" data-filter="${esc(t.name)}" onclick="setFilter('${esc(t.name)}')">${t.name}</button>`).join('')}
      <div class="filter-sep"></div>
-     <button class="filter-pill ${activeFilter==='__shared__'?'active':''}" data-filter="__shared__" onclick="setFilter('__shared__',this)">&#10003; Shared</button>
-     <button class="filter-pill ${activeFilter==='__mine__'?'active':''}" data-filter="__mine__" onclick="setFilter('__mine__',this)">My Events</button>
+     <button class="filter-pill ${activeFilters.has('__shared__')?'active':''}" data-filter="__shared__" onclick="setFilter('__shared__')">&#10003; Shared</button>
+     <button class="filter-pill ${activeFilters.has('__mine__')?'active':''}" data-filter="__mine__" onclick="setFilter('__mine__')">My Events</button>
      ${mode==='manager'?`<button class="filter-pill ${showCompleted?'active':''}" onclick="toggleCompleted(this)">Show Completed</button>`:''}
      <input class="search-input" type="text" placeholder="Search events..." id="searchInput" oninput="render(true)"/>`;
 }
