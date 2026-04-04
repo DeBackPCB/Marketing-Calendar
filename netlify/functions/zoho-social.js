@@ -7,9 +7,6 @@ exports.handler = async function() {
     return { statusCode: 500, body: JSON.stringify({ error: 'Zoho credentials not configured', has: { clientId: !!clientId, clientSecret: !!clientSecret, refreshToken: !!refreshToken } }) };
   }
 
-  // Debug: return token prefix so we can verify correct value is set
-  const tokenPreview = refreshToken.substring(0, 20) + '...';
-
   try {
     // 1. Refresh access token
     const tokenRes = await fetch('https://accounts.zoho.com/oauth/v2/token', {
@@ -24,7 +21,7 @@ exports.handler = async function() {
     });
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      return { statusCode: 500, body: JSON.stringify({ error: 'Token refresh failed', detail: tokenData, tokenPreview }) };
+      return { statusCode: 500, body: JSON.stringify({ error: 'Token refresh failed', detail: tokenData }) };
     }
     const auth = `Zoho-oauthtoken ${tokenData.access_token}`;
 
@@ -43,21 +40,24 @@ exports.handler = async function() {
     const portal = portalsData.portals[0];
     const portalId = portal.zsoid || portal.portal_id || portal.id;
 
-    // 3. Fetch posts
-    const postsRes = await fetch(
-      `https://www.zohoapis.com/social/v1/${portalId}/posts?count=200`,
-      { headers: { Authorization: auth } }
-    );
-    const postsRaw = await postsRes.text();
-    let postsData;
-    try { postsData = JSON.parse(postsRaw); } catch(e) {
-      return { statusCode: 500, body: JSON.stringify({ error: 'Posts parse error', detail: postsRaw }) };
+    // 3. Fetch all posts (published + scheduled)
+    const allPosts = [];
+    for (const type of ['published', 'scheduled']) {
+      const postsRes = await fetch(
+        `https://www.zohoapis.com/social/v1/${portalId}/posts?type=${type}&count=100`,
+        { headers: { Authorization: auth } }
+      );
+      const postsRaw = await postsRes.text();
+      let postsData;
+      try { postsData = JSON.parse(postsRaw); } catch(e) { continue; }
+      const list = postsData.posts || (Array.isArray(postsData) ? postsData : []);
+      allPosts.push(...list);
     }
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(postsData.posts || postsData)
+      body: JSON.stringify(allPosts)
     };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message, stack: err.stack }) };
