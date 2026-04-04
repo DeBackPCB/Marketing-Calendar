@@ -98,6 +98,28 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--brown-
 .arrow-col{color:var(--border);}
 .arrow-col svg{width:15px;height:15px;}
 
+/* NEWS */
+.news-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.news-header h2{font-size:1.25rem;font-weight:700;color:var(--brown-dark);margin:0;}
+.news-header p{font-size:.8rem;color:var(--brown-light);margin:4px 0 0;}
+.news-refresh-btn{display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;transition:opacity .15s;}
+.news-refresh-btn:hover{opacity:.88;}
+.news-refresh-btn:disabled{opacity:.5;cursor:default;}
+.news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px;}
+.news-card{background:var(--warm-white);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .15s;}
+.news-card:hover{box-shadow:0 4px 16px var(--shadow);}
+.news-card-img{width:100%;height:160px;object-fit:cover;background:var(--cream);}
+.news-card-img-placeholder{width:100%;height:160px;background:linear-gradient(135deg,var(--cream) 0%,var(--border) 100%);display:flex;align-items:center;justify-content:center;color:var(--brown-light);font-size:2rem;}
+.news-card-body{padding:16px;flex:1;display:flex;flex-direction:column;gap:6px;}
+.news-card-source{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--red);}
+.news-card-title{font-size:.95rem;font-weight:700;color:var(--brown-dark);line-height:1.35;text-decoration:none;}
+.news-card-title:hover{color:var(--red);}
+.news-card-snippet{font-size:.8rem;color:var(--brown-mid);line-height:1.5;flex:1;}
+.news-card-date{font-size:.72rem;color:var(--brown-light);}
+.news-empty{text-align:center;padding:60px 20px;color:var(--brown-light);}
+.news-empty svg{width:48px;height:48px;margin-bottom:12px;opacity:.35;}
+.news-error{background:#fff5f5;border:1px solid #fcc;border-radius:10px;padding:16px;color:#c0392b;font-size:.85rem;}
+
 /* COMMENTS */
 .comments-section{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
 .comments-heading{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--brown-light);margin-bottom:10px;}
@@ -489,6 +511,9 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--brown-
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Requests
         <span id="reqBadge" style="display:none;background:#c0392b;color:white;font-size:.58rem;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:2px;"></span>
       </button>
+      <button class="vt-btn" id="vtNews" onclick="setCalView('news')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>In the News
+      </button>
     </div>
     <!-- MGR TOOLS -->
     <div id="mgrTools" style="display:none;gap:6px;align-items:center;">
@@ -533,6 +558,7 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--brown-
   <div id="listView"></div>
   <div id="calView" style="display:none"></div>
   <div id="requestsView" style="display:none"></div>
+  <div id="newsView" style="display:none"></div>
 </main>
 
 <!-- POPOVER -->
@@ -1068,12 +1094,18 @@ function setCalView(v){
   document.getElementById('vtList').classList.toggle('active',v==='list');
   document.getElementById('vtCal').classList.toggle('active',v==='cal');
   document.getElementById('vtReq').classList.toggle('active',v==='requests');
+  document.getElementById('vtNews').classList.toggle('active',v==='news');
   document.getElementById('listView').style.display=v==='list'?'block':'none';
   document.getElementById('calView').style.display=v==='cal'?'block':'none';
   document.getElementById('requestsView').style.display=v==='requests'?'block':'none';
-  // Hide filters bar on requests view
-  document.getElementById('filtersBar').style.display=v==='requests'?'none':'flex';
-  closePop(); render();
+  document.getElementById('newsView').style.display=v==='news'?'block':'none';
+  // Hide filters/stats/upcoming on news view
+  document.getElementById('filtersBar').style.display=(v==='requests'||v==='news')?'none':'flex';
+  document.getElementById('upcomingBar').style.display=v==='news'?'none':'block';
+  document.getElementById('statsRow').style.display=v==='news'?'none':'flex';
+  closePop();
+  if(v==='news') renderNews();
+  else render();
 }
 
 // ════ FILTERS ═════════════════════════════════════
@@ -1716,6 +1748,41 @@ async function syncMailchimp(){
     btn.disabled=false;btn.textContent='Sync MailChimp';
   }
 }
+// ════ IN THE NEWS ═════════════════════════════════
+let newsCache=null;let newsCacheTime=0;
+async function renderNews(forceRefresh=false){
+  const el=document.getElementById('newsView');
+  const CACHE_MS=3*60*60*1000; // 3 hours
+  if(!forceRefresh && newsCache && (Date.now()-newsCacheTime)<CACHE_MS){
+    el.innerHTML=newsHTML(newsCache);return;
+  }
+  el.innerHTML=`<div class="news-header"><div><h2>In the News</h2><p>Mentions of Prairie City Bakery across the web</p></div><button class="news-refresh-btn" disabled>Loading…</button></div><div class="news-empty"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg><div>Searching…</div></div>`;
+  try{
+    const res=await fetch('/.netlify/functions/news-search');
+    const data=await res.json();
+    if(!res.ok||data.error) throw new Error(data.error||'Server error '+res.status);
+    newsCache=data; newsCacheTime=Date.now();
+    el.innerHTML=newsHTML(data);
+  }catch(err){
+    el.innerHTML=`<div class="news-header"><div><h2>In the News</h2><p>Mentions of Prairie City Bakery across the web</p></div><button class="news-refresh-btn" onclick="renderNews(true)">Retry</button></div><div class="news-error">Could not load news: ${err.message}</div>`;
+  }
+}
+function newsHTML(articles){
+  const refreshed=newsCacheTime?new Date(newsCacheTime).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'';
+  let html=`<div class="news-header"><div><h2>In the News</h2><p>Mentions of Prairie City Bakery across the web${refreshed?' &mdash; updated '+refreshed:''}</p></div><button class="news-refresh-btn" onclick="renderNews(true)">&#8635; Refresh</button></div>`;
+  if(!articles.length){
+    return html+`<div class="news-empty"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg><div>No recent articles found.</div></div>`;
+  }
+  html+='<div class="news-grid">';
+  for(const a of articles){
+    const dateStr=a.date?new Date(a.date).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}):'';
+    const img=a.image?`<img class="news-card-img" src="${a.image}" alt="" onerror="this.outerHTML='<div class=\\'news-card-img-placeholder\\'>📰</div>'">`:`<div class="news-card-img-placeholder">📰</div>`;
+    html+=`<div class="news-card">${img}<div class="news-card-body"><div class="news-card-source">${a.source}</div><a class="news-card-title" href="${a.url}" target="_blank" rel="noopener">${a.title}</a><div class="news-card-snippet">${a.snippet}</div>${dateStr?`<div class="news-card-date">${dateStr}</div>`:''}</div></div>`;
+  }
+  html+='</div>';
+  return html;
+}
+
 function resetUpload(){parsedRows=[];['uploadPreview','uploadInfo','uploadError'].forEach(id=>{const el=document.getElementById(id);el.style.display='none';el.innerHTML='';});document.getElementById('importBtn').style.display='none';document.getElementById('xlsxInput').value='';}
 function xlsDragOver(e){e.preventDefault();document.getElementById('uploadZone').classList.add('drag-over');}
 function xlsDragLeave(){document.getElementById('uploadZone').classList.remove('drag-over');}
