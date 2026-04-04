@@ -1069,7 +1069,8 @@ function toggleCompleted(el){showCompleted=!showCompleted;el.classList.toggle('a
 function getFiltered(includeCompleted=false){
   const q=(document.getElementById('searchInput')?.value||'').toLowerCase();
   let base=events.filter(e=>{
-    if(mode==='sales'&&!e.sharedWithSales&&!e.salesSubmitted) return false;
+    const _myName=currentName||(currentUser?.email?.split('@')[0]||'');
+    if(mode==='sales'&&!e.sharedWithSales&&!(e.salesSubmitted&&getSubmitter(e.notes)===_myName)) return false;
     if(mode==='manager'&&!includeCompleted&&!showCompleted&&activeStatFilter!=='Completed'&&e.status==='Completed') return false;
     if(activeFilter==='__shared__'&&!e.sharedWithSales) return false;
     else if(activeFilter==='__mine__'&&getSubmitter(e.notes)!==(currentName||(currentUser?.email?.split('@')[0]||''))) return false;
@@ -1309,7 +1310,7 @@ function salesCard(e,today){
     <div><div class="event-top">
       <span class="event-title">${e.title}</span>
       <span class="type-badge" style="background:${c}20;color:${c}">${e.type}</span>
-      ${e.salesSubmitted?'<span class="sales-submitted-badge">My Submission</span>':''}
+      ${e.salesSubmitted&&getSubmitter(e.notes)===(currentName||(currentUser?.email?.split('@')[0]||''))?'<span class="sales-submitted-badge">My Submission</span>':''}
       <span class="status-chip ${sc}">${e.status}</span>
     </div>
     <div class="event-meta">
