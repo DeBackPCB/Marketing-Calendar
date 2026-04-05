@@ -130,11 +130,16 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--brown-
 .comment-time{font-size:.6rem;color:#bbb;margin-left:5px;}
 .comment-text{font-size:.78rem;color:var(--brown-dark);margin-top:2px;white-space:pre-wrap;word-break:break-word;}
 .no-comments{font-size:.78rem;color:#bbb;margin-bottom:10px;}
-.comment-input-row{display:flex;gap:7px;margin-top:8px;}
+.comment-input-row{display:flex;gap:7px;margin-top:8px;position:relative;}
 .comment-input-row textarea{flex:1;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-family:'DM Sans',sans-serif;font-size:.8rem;resize:none;height:52px;}
 .comment-input-row textarea:focus{outline:none;border-color:var(--caramel);}
 .comment-submit-btn{background:var(--red-dark);color:white;border:none;border-radius:7px;padding:0 14px;font-size:.75rem;font-weight:600;cursor:pointer;}
 .comment-submit-btn:hover{background:var(--red);}
+.mention-dropdown{position:absolute;bottom:calc(100% + 4px);left:0;background:white;border:1.5px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:9999;min-width:180px;max-height:160px;overflow-y:auto;}
+.mention-option{padding:7px 12px;font-size:.8rem;cursor:pointer;color:var(--brown-dark);display:flex;align-items:center;gap:8px;}
+.mention-option:hover,.mention-option.active{background:var(--cream);}
+.mention-option-avatar{width:22px;height:22px;border-radius:50%;background:var(--red);color:white;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.mention-tag{color:var(--red);font-weight:600;}
 
 /* SHARED CARD PARTS */
 .date-block{text-align:center;background:var(--cream);border-radius:6px;padding:5px 3px;border:1px solid var(--border);}
@@ -810,6 +815,7 @@ const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 
 // Auth state
 let currentUser=null, currentRole=null, currentName=null, accessToken=null, isSalesPreview=false;
+let allUsers=[];
 
 // Generic Supabase REST helper (uses session token when available)
 async function sbFetch(method, path, body=null){
@@ -895,6 +901,17 @@ async function fetchRole(){
   }catch(e){return 'sales';}
 }
 
+async function fetchAllUsers(){
+  try{
+    const data=await sbFetch('GET','/rest/v1/profiles?select=id');
+    // Get display names from auth metadata via users list — fall back to emails from events
+    const names=new Set();
+    // Collect names from existing events' submitter fields
+    events.forEach(e=>{const s=getSubmitter(e.notes);if(s)names.add(s);});
+    if(currentName) names.add(currentName);
+    allUsers=[...names].sort();
+  }catch(e){allUsers=currentName?[currentName]:[];}
+}
 async function afterLogin(){
   currentRole=await fetchRole();
   isSalesPreview=false;
@@ -1025,6 +1042,7 @@ async function loadAndRender(){
   document.getElementById('listView').innerHTML=`<div class="empty-state"><p>Loading...</p></div>`;
   try{
     events=await loadEvents();
+    fetchAllUsers(); // populate mention list (non-blocking)
     if(!events.length&&currentRole==='manager'){
       const f=d=>d.toISOString().split('T')[0];
       const p=n=>{let d=new Date();d.setDate(d.getDate()+n);return f(d);};
@@ -1467,6 +1485,10 @@ function closePop(){document.getElementById('popover').style.display='none';popI
 document.addEventListener('click',e=>{const p=document.getElementById('popover');if(p.style.display==='block'&&!p.contains(e.target))closePop();});
 
 // ════ COMMENTS ════════════════════════════════════════
+function renderMentions(text){
+  return text.replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/@([\w. -]+)/g,'<span class="mention-tag">@$1</span>');
+}
 function commentsHTML(e){
   const comments=e.comments||[];
   const list=comments.length
@@ -1474,18 +1496,91 @@ function commentsHTML(e){
         const initials=c.author.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?';
         const d=new Date(c.ts);
         const time=d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-        return `<div class="comment-item"><div class="comment-avatar">${initials}</div><div class="comment-bubble"><div><span class="comment-author">${c.author}</span><span class="comment-time">${time}</span></div><div class="comment-text">${c.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div></div>`;
+        return `<div class="comment-item"><div class="comment-avatar">${initials}</div><div class="comment-bubble"><div><span class="comment-author">${c.author}</span><span class="comment-time">${time}</span></div><div class="comment-text">${renderMentions(c.text)}</div></div></div>`;
       }).join('')
     : '<div class="no-comments">No comments yet.</div>';
-  return `<div class="comments-section" id="comments-section-${e.id}"><div class="comments-heading">Comments (${comments.length})</div>${list}<div class="comment-input-row"><textarea id="comment-input-${e.id}" placeholder="Add a comment..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addComment('${e.id}')}"></textarea><button class="comment-submit-btn" onclick="addComment('${e.id}')">Post</button></div></div>`;
+  return `<div class="comments-section" id="comments-section-${e.id}">
+    <div class="comments-heading">Comments (${comments.length})</div>
+    ${list}
+    <div class="comment-input-row" id="comment-row-${e.id}">
+      <textarea id="comment-input-${e.id}" placeholder="Add a comment… type @ to mention"
+        oninput="handleMentionInput(event,'${e.id}')"
+        onkeydown="handleMentionKey(event,'${e.id}')"></textarea>
+      <button class="comment-submit-btn" onclick="addComment('${e.id}')">Post</button>
+    </div>
+  </div>`;
 }
+
+let _mentionEventId=null, _mentionActive=false, _mentionIdx=0, _mentionMatches=[];
+
+function handleMentionInput(ev, id){
+  const ta=ev.target;
+  const val=ta.value;
+  const pos=ta.selectionStart;
+  // Find @ before cursor
+  const before=val.slice(0,pos);
+  const match=before.match(/@([\w. ]*)$/);
+  if(match){
+    const query=match[1].toLowerCase();
+    _mentionMatches=allUsers.filter(u=>u.toLowerCase().includes(query)&&u!==(currentName||''));
+    if(currentName&&(currentName.toLowerCase().includes(query)||query==='')) _mentionMatches.push('...self ('+currentName+')'); // optionally allow self-tag
+    _mentionMatches=allUsers.filter(u=>u.toLowerCase().includes(query));
+    if(_mentionMatches.length){
+      _mentionEventId=id; _mentionActive=true; _mentionIdx=0;
+      showMentionDropdown(id);return;
+    }
+  }
+  hideMentionDropdown(id);
+}
+
+function handleMentionKey(ev, id){
+  if(!_mentionActive){
+    if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();addComment(id);}
+    return;
+  }
+  if(ev.key==='ArrowDown'){ev.preventDefault();_mentionIdx=(_mentionIdx+1)%_mentionMatches.length;showMentionDropdown(id);}
+  else if(ev.key==='ArrowUp'){ev.preventDefault();_mentionIdx=(_mentionIdx-1+_mentionMatches.length)%_mentionMatches.length;showMentionDropdown(id);}
+  else if(ev.key==='Enter'||ev.key==='Tab'){ev.preventDefault();insertMention(id,_mentionMatches[_mentionIdx]);}
+  else if(ev.key==='Escape'){hideMentionDropdown(id);}
+}
+
+function showMentionDropdown(id){
+  hideMentionDropdown(id);
+  const row=document.getElementById('comment-row-'+id);if(!row)return;
+  const div=document.createElement('div');div.className='mention-dropdown';div.id='mention-dd-'+id;
+  div.innerHTML=_mentionMatches.map((u,i)=>{
+    const initials=u.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'@';
+    return `<div class="mention-option${i===_mentionIdx?' active':''}" onmousedown="insertMention('${id}','${u.replace(/'/g,"\\'")}')"><div class="mention-option-avatar">${initials}</div>${u}</div>`;
+  }).join('');
+  row.appendChild(div);
+}
+
+function hideMentionDropdown(id){
+  const dd=document.getElementById('mention-dd-'+id);if(dd)dd.remove();
+  _mentionActive=false;
+}
+
+function insertMention(id, name){
+  const ta=document.getElementById('comment-input-'+id);if(!ta)return;
+  const pos=ta.selectionStart;
+  const before=ta.value.slice(0,pos);
+  const after=ta.value.slice(pos);
+  const atIdx=before.lastIndexOf('@');
+  ta.value=before.slice(0,atIdx)+'@'+name+' '+after;
+  ta.selectionStart=ta.selectionEnd=atIdx+name.length+2;
+  hideMentionDropdown(id);
+  ta.focus();
+}
+
 async function addComment(id){
   const e=events.find(x=>x.id===id);if(!e)return;
+  hideMentionDropdown(id);
   const inp=document.getElementById('comment-input-'+id);
   const text=(inp?.value||'').trim();if(!text)return;
   const author=currentName||(currentUser?.email?.split('@')[0]||'Anonymous');
   e.comments=e.comments||[];
   e.comments.push({id:uid(),author,text,ts:new Date().toISOString()});
+  inp.value='';
   await saveE(e);
   const section=document.getElementById('comments-section-'+id);
   if(section)section.outerHTML=commentsHTML(e);
