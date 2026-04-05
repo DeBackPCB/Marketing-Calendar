@@ -90,13 +90,16 @@ exports.handler = async function() {
           };
           const link = (item.match(/<link[^>]*>([^<]+)/) || [])[1]?.trim() || get('link');
           if (!link || seenUrls.has(link)) continue;
-          seenUrls.add(link);
           const title   = get('title');
           const pubDate = get('pubDate');
           const source  = get('source') || new URL(link).hostname.replace('www.','');
           const rawDesc = get('description');
           const imgMatch = rawDesc.match(/<img[^>]+src=["']([^"']+)["']/i);
           const snippet = rawDesc.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').trim();
+          // Only include if Prairie City Bakery is actually mentioned
+          const combined = (title + ' ' + snippet).toLowerCase();
+          if (!combined.includes('prairie city bakery')) continue;
+          seenUrls.add(link);
           allItems.push({ title, url: link, snippet, source, date: pubDate, dateMs: pubDate ? new Date(pubDate).getTime() : 0, image: imgMatch?.[1] || null });
         }
       }
