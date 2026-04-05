@@ -1952,7 +1952,8 @@ function newsHTML(autoArticles){
   html+='<div class="news-grid">';
   for(const a of all){
     const dateStr=a.date?new Date(a.date).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}):'';
-    const img=a.image?`<img class="news-card-img" src="${a.image}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="news-card-img-placeholder" style="display:none">📰</div>`:`<div class="news-card-img-placeholder">📰</div>`;
+    const addImgBtn=(!a.image&&a.manual&&mode==='manager')?`<button onclick="promptArticleImage('${a.url.replace(/'/g,"\\'")}')" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:6px;font-size:.68rem;padding:3px 8px;cursor:pointer;white-space:nowrap;">+ Add Image</button>`:'';
+    const img=a.image?`<img class="news-card-img" src="${a.image}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="news-card-img-placeholder" style="display:none">📰</div>`:`<div class="news-card-img-placeholder" style="position:relative;">📰${addImgBtn}</div>`;
     const delFn=a.manual?`removeManualArticle('${a.url.replace(/'/g,"\\'")}')`:`hideArticle('${a.url.replace(/'/g,"\\'")}')`;
     const del=mode==='manager'?`<button onclick="${delFn};renderNews()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:.8rem;cursor:pointer;line-height:24px;text-align:center;" title="Remove">×</button>`:'';
     const readLink=a.manual?`<a href="${a.url}" target="_blank" rel="noopener" style="font-size:.75rem;color:var(--red);font-weight:600;text-decoration:none;margin-top:6px;display:inline-block;">Read Article →</a>`:'';
@@ -1980,9 +1981,15 @@ async function fetchArticlePreview(){
     _pendingArticle=data;
     const dateStr=data.date?new Date(data.date).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}):'';
     const img=data.image?`<img src="${data.image}" style="width:100%;height:140px;object-fit:cover;border-radius:8px;margin-bottom:10px;" onerror="this.style.display='none'">`:'';
+    const imgInput=data.image?'':`
+      <div style="margin-bottom:10px;">
+        <div style="font-size:.72rem;color:var(--brown-light);margin-bottom:4px;">No image found — paste an image URL (optional):</div>
+        <input id="manualImageInput" type="url" placeholder="https://..." style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:.82rem;box-sizing:border-box;" oninput="_pendingArticle.image=this.value||null"/>
+      </div>`;
     document.getElementById('articlePreview').innerHTML=`
       <div style="border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--cream);">
         ${img}
+        ${imgInput}
         <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--red);margin-bottom:4px;">${data.source}</div>
         <div style="font-weight:700;font-size:.9rem;color:var(--brown-dark);margin-bottom:6px;">${data.title}</div>
         <div style="font-size:.8rem;color:var(--brown-mid);margin-bottom:10px;">${data.snippet}</div>
@@ -1998,7 +2005,8 @@ async function fetchArticlePreview(){
     document.getElementById('articlePreview').innerHTML=`
       <div style="border:1px solid #fcc;border-radius:8px;padding:14px;background:#fff9f9;">
         <div style="font-size:.8rem;color:#c0392b;margin-bottom:10px;">Could not auto-fetch this page (it may block outside requests). Enter the title manually:</div>
-        <input id="manualTitleInput" value="${slugTitle}" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;margin-bottom:10px;box-sizing:border-box;" oninput="_pendingArticle.title=this.value"/>
+        <input id="manualTitleInput" value="${slugTitle}" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;margin-bottom:8px;box-sizing:border-box;" oninput="_pendingArticle.title=this.value"/>
+        <input id="manualImageInput" type="url" placeholder="Image URL (optional)…" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;margin-bottom:10px;box-sizing:border-box;" oninput="_pendingArticle.image=this.value||null"/>
         <button onclick="saveManualArticle()" style="padding:8px 18px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;">Add to News</button>
       </div>`;
   }
@@ -2018,6 +2026,16 @@ function saveManualArticle(){
   if(newsCache) document.getElementById('newsView').innerHTML=newsHTML(newsCache);
 }
 
+function promptArticleImage(url){
+  const imgUrl=prompt('Paste an image URL for this article:');
+  if(!imgUrl) return;
+  const articles=loadManualArticles();
+  const idx=articles.findIndex(a=>a.url===url);
+  if(idx===-1) return;
+  articles[idx].image=imgUrl;
+  saveManualArticles(articles);
+  if(newsCache) document.getElementById('newsView').innerHTML=newsHTML(newsCache);
+}
 function removeManualArticle(url){
   saveManualArticles(loadManualArticles().filter(a=>a.url!==url));
 }
