@@ -532,9 +532,7 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--brown-
       <button class="ghost-btn" id="mcSyncBtn" onclick="syncMailchimp()">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Sync MailChimp
       </button>
-      <button class="ghost-btn" id="socialSyncBtn" onclick="syncSocial()">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/></svg>Sync Social
-      </button>
+
       <button class="ghost-btn" onclick="openCatModal()">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M7 7h.01M7 12h.01M7 17h.01M11 7h6M11 12h6M11 17h6"/></svg>Categories
       </button>
@@ -1898,36 +1896,7 @@ async function syncMailchimp(){
   }
 }
 
-async function syncSocial(){
-  const btn=document.getElementById('socialSyncBtn');
-  btn.disabled=true;btn.textContent='Syncing…';
-  try{
-    const res=await fetch('/.netlify/functions/social-sync');
-    const posts=await res.json();
-    // Surface any platform errors
-    const errs=posts.filter(p=>p.error);
-    if(errs.length&&!posts.filter(p=>!p.error).length) throw new Error(errs.map(e=>e.error).join(' | '));
-    const existingIds=new Set(events.map(e=>{const m=(e.notes||'').match(/Social ID: (\S+)/);return m?m[1]:null;}).filter(Boolean));
-    let added=0;
-    for(const p of posts.filter(p=>!p.error)){
-      if(!p.id||existingIds.has(p.id)||!p.date) continue;
-      const item={id:uid(),title:`[${p.platform}] ${p.title}`,type:'Social Media Post',date:p.date,endDate:'',runDate:'',
-        status:p.status==='Published'?'Published':p.status==='Scheduled'?'In Review':'Draft',
-        priority:'Medium',notes:`Social ID: ${p.id}${p.url?'\n'+p.url:''}`,
-        attachments:[],comments:[],sharedWithSales:false,salesSubmitted:false};
-      events.push(item);
-      await saveE(item);
-      added++;
-    }
-    const errMsg=errs.length?` (${errs.map(e=>e.error).join(', ')})`:'';
-    btn.textContent=added>0?`✓ ${added} imported`:`✓ Up to date${errMsg}`;
-    if(added>0) render();
-    setTimeout(()=>{btn.disabled=false;btn.textContent='Sync Social';},4000);
-  }catch(err){
-    alert('Social sync failed: '+err.message);
-    btn.disabled=false;btn.textContent='Sync Social';
-  }
-}
+
 // ════ IN THE NEWS ═════════════════════════════════
 let newsCache=null;let newsCacheTime=0;
 function loadManualArticles(){try{return JSON.parse(localStorage.getItem('pcb_manual_articles')||'[]');}catch{return[];}}
