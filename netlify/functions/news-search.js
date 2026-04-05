@@ -71,10 +71,15 @@ exports.handler = async function() {
     const allItems = [];
     const seenUrls = new Set();
 
-    // 1. Google News RSS
-    try {
-      const encoded = encodeURIComponent('"Prairie City Bakery"');
-      const res = await fetch(`https://news.google.com/rss/search?q=${encoded}&hl=en-US&gl=US&ceid=US:en`);
+    // 1. Google News RSS — general + LinkedIn
+    const rssQueries = [
+      '"Prairie City Bakery"',
+      '"Prairie City Bakery" site:linkedin.com'
+    ];
+    for (const q of rssQueries) {
+      try {
+        const encoded = encodeURIComponent(q);
+        const res = await fetch(`https://news.google.com/rss/search?q=${encoded}&hl=en-US&gl=US&ceid=US:en`);
       if (res.ok) {
         const xml = await res.text();
         const itemMatches = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
@@ -96,6 +101,7 @@ exports.handler = async function() {
         }
       }
     } catch(e) {}
+    } // end for rssQueries
 
     // 2. Direct site scrapes
     const sites = [
