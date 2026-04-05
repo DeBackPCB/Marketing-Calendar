@@ -1418,8 +1418,7 @@ function salesCard(e,today){
   const isPast=rd<today&&e.status==='Completed';
   const endFmt=e.endDate?new Date(e.endDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
   const startFmt=new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  const _attsJson=e.attachments&&e.attachments.length?encodeURIComponent(JSON.stringify(e.attachments.map(a=>({dataUrl:a.dataUrl,name:a.name,size:a.size||0})))):'';
-  const fileIcons=(e.attachments&&e.attachments.length)?e.attachments.map((a,i)=>`<div class="file-icon-chip" onclick="event.stopPropagation();openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0},JSON.parse(decodeURIComponent('${_attsJson}')),${i})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join(''):'';
+  const fileIcons=(e.attachments&&e.attachments.length)?e.attachments.map((a,i)=>`<div class="file-icon-chip" onclick="event.stopPropagation();openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0},'${e.id}',${i})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join(''):'';
   const submitter=getSubmitter(e.notes);
   return `<div class="sales-card ${isPast?'past':''}" style="border-left:4px solid ${c}" onclick="openDetail('${e.id}')">
     <div class="date-block"><div class="date-month">${mon}</div><div class="date-day">${day}</div></div>
@@ -1619,7 +1618,7 @@ function openDetail(id){
     ${e.notes?`<div class="detail-row"><div class="detail-icon" style="background:#f5f0ea"><svg fill="none" viewBox="0 0 24 24" stroke="#a0714f" stroke-width="2"><path stroke-linecap="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg></div><div><div class="detail-label">Notes</div><div class="detail-value">${e.notes}</div></div></div>`:''}
     <div class="detail-row"><div class="detail-icon" style="background:#fdecea"><svg fill="none" viewBox="0 0 24 24" stroke="#c8102e" stroke-width="2"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg></div>
     <div style="flex:1"><div class="detail-label">Files &amp; Attachments</div>
-      ${(()=>{if(!e.attachments||!e.attachments.length)return'<div class="no-attach">No files attached</div>';const aj=encodeURIComponent(JSON.stringify(e.attachments.map(a=>({dataUrl:a.dataUrl,name:a.name,size:a.size||0}))));return`<div class="file-icons-row" style="margin-top:8px;">${e.attachments.map((a,i)=>`<div class="file-icon-chip" onclick="openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0},JSON.parse(decodeURIComponent('${aj}')),${i})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join('')}</div>`;})()}
+      ${e.attachments&&e.attachments.length?`<div class="file-icons-row" style="margin-top:8px;">${e.attachments.map((a,i)=>`<div class="file-icon-chip" onclick="openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0},'${e.id}',${i})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join('')}</div>`:'<div class="no-attach">No files attached</div>'}
     </div></div>
     ${commentsHTML(e)}
     ${e.salesSubmitted&&getSubmitter(e.notes)===(currentName||(currentUser?.email?.split('@')[0]||''))?`
@@ -1651,7 +1650,7 @@ function openMgrDetail(id){
     ${e.notes?`<div class="detail-row"><div class="detail-icon" style="background:#f5f0ea"><svg fill="none" viewBox="0 0 24 24" stroke="#a0714f" stroke-width="2"><path stroke-linecap="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg></div><div><div class="detail-label">Notes</div><div class="detail-value">${e.notes}</div></div></div>`:''}
     <div class="detail-row"><div class="detail-icon" style="background:#fdecea"><svg fill="none" viewBox="0 0 24 24" stroke="#c8102e" stroke-width="2"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg></div>
     <div style="flex:1"><div class="detail-label">Files &amp; Attachments</div>
-      ${(()=>{if(!e.attachments||!e.attachments.length)return'<div class="no-attach">No files attached</div>';const aj=encodeURIComponent(JSON.stringify(e.attachments.map(a=>({dataUrl:a.dataUrl,name:a.name,size:a.size||0}))));return`<div class="file-icons-row" style="margin-top:8px;">${e.attachments.map((a,i)=>`<div class="file-icon-chip" onclick="openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0},JSON.parse(decodeURIComponent('${aj}')),${i})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join('')}</div>`;})()}
+      ${e.attachments&&e.attachments.length?`<div class="file-icons-row" style="margin-top:8px;">${e.attachments.map((a,i)=>`<div class="file-icon-chip" onclick="openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0},'${e.id}',${i})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join('')}</div>`:'<div class="no-attach">No files attached</div>'}
     </div></div>
     ${commentsHTML(e)}
     <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
@@ -1744,9 +1743,15 @@ function closePreview(){
   document.getElementById('prev-body').innerHTML='';
 }
 let _previewAttachments=[];let _previewIdx=0;
-function openFile(dataUrl,name,size,attachments,idx){
-  _previewAttachments=attachments||[];
-  _previewIdx=idx??0;
+function openFile(dataUrl,name,size,eventId,idx){
+  // If eventId provided, pull attachments from the event
+  if(eventId){
+    const e=events.find(x=>x.id===eventId);
+    _previewAttachments=e?(e.attachments||[]):[];
+    _previewIdx=idx??0;
+  } else {
+    _previewAttachments=[];_previewIdx=0;
+  }
   previewFile(dataUrl,name,size);
   const multi=_previewAttachments.length>1;
   document.getElementById('prev-prev-btn').style.display=multi?'flex':'none';
@@ -1755,10 +1760,11 @@ function openFile(dataUrl,name,size,attachments,idx){
   if(multi) document.getElementById('prev-counter').textContent=`${_previewIdx+1} / ${_previewAttachments.length}`;
 }
 function cycleAttach(dir){
-  if(!_previewAttachments.length) return;
+  if(_previewAttachments.length<2) return;
   _previewIdx=(_previewIdx+dir+_previewAttachments.length)%_previewAttachments.length;
   const a=_previewAttachments[_previewIdx];
-  openFile(a.dataUrl,a.name,a.size||0,_previewAttachments,_previewIdx);
+  previewFile(a.dataUrl,a.name,a.size||0);
+  document.getElementById('prev-counter').textContent=`${_previewIdx+1} / ${_previewAttachments.length}`;
 }
 
 function editEvent(id){
