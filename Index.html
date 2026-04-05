@@ -1982,12 +1982,13 @@ function newsHTML(autoArticles){
     return html+`<div class="news-empty"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg><div>No recent articles found.</div></div>`;
   }
   html+='<div class="news-grid">';
-  for(const a of all){
+  _newsItems=all;
+  for(let ni=0;ni<all.length;ni++){
+    const a=all[ni];
     const dateStr=a.date?new Date(a.date).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}):'';
-    const addImgBtn=(!a.image&&a.manual&&mode==='manager')?`<button onclick="promptArticleImage('${a.url.replace(/'/g,"\\'")}')" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:6px;font-size:.68rem;padding:3px 8px;cursor:pointer;white-space:nowrap;">+ Add Image</button>`:'';
+    const addImgBtn=(!a.image&&a.manual&&mode==='manager')?`<button onclick="event.stopPropagation();promptArticleImage(${ni})" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:6px;font-size:.68rem;padding:3px 8px;cursor:pointer;white-space:nowrap;">+ Add Image</button>`:'';
     const img=a.image?`<img class="news-card-img" src="${a.image}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="news-card-img-placeholder" style="display:none">📰</div>`:`<div class="news-card-img-placeholder" style="position:relative;">📰${addImgBtn}</div>`;
-    const delFn=a.manual?`removeManualArticle('${a.url.replace(/'/g,"\\'")}')`:`hideArticle('${a.url.replace(/'/g,"\\'")}')`;
-    const del=mode==='manager'?`<button onclick="${delFn};renderNews()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:.8rem;cursor:pointer;line-height:24px;text-align:center;" title="Remove">×</button>`:'';
+    const del=mode==='manager'?`<button onclick="event.stopPropagation();deleteNewsItem(${ni})" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:.8rem;cursor:pointer;line-height:24px;text-align:center;" title="Remove">×</button>`:'';
     const readLink=a.manual?`<a href="${a.url}" target="_blank" rel="noopener" style="font-size:.75rem;color:var(--red);font-weight:600;text-decoration:none;margin-top:6px;display:inline-block;">Read Article →</a>`:'';
     const snippet=a.snippet.length>120?a.snippet.slice(0,120).trimEnd()+'…':a.snippet;
     html+=`<div class="news-card" style="position:relative;">${img}${del}<div class="news-card-body"><div class="news-card-source">${a.source}${a.manual?' <span style="font-size:.65rem;background:var(--gold);color:var(--brown-dark);padding:1px 5px;border-radius:4px;margin-left:4px;">Added</span>':''}</div><a class="news-card-title" href="${a.url}" target="_blank" rel="noopener">${a.title}</a><div class="news-card-snippet">${snippet}</div>${dateStr?`<div class="news-card-date">${dateStr}</div>`:''} ${readLink}</div></div>`;
@@ -1997,6 +1998,7 @@ function newsHTML(autoArticles){
 }
 
 let _pendingArticle=null;
+let _newsItems=[];
 function openAddArticle(){document.getElementById('addArticleForm').style.display='block';document.getElementById('articleUrlInput').focus();}
 function closeAddArticle(){document.getElementById('addArticleForm').style.display='none';document.getElementById('articleUrlInput').value='';document.getElementById('articlePreview').innerHTML='';_pendingArticle=null;}
 function clearArticlePreview(){document.getElementById('articlePreview').innerHTML='';_pendingArticle=null;}
@@ -2058,11 +2060,20 @@ function saveManualArticle(){
   if(newsCache) document.getElementById('newsView').innerHTML=newsHTML(newsCache);
 }
 
-function promptArticleImage(url){
+function deleteNewsItem(ni){
+  const a=_newsItems[ni];
+  if(!a) return;
+  if(a.manual) saveManualArticles(loadManualArticles().filter(x=>x.url!==a.url));
+  else hideArticle(a.url);
+  renderNews();
+}
+function promptArticleImage(ni){
+  const a=_newsItems[ni];
+  if(!a) return;
   const imgUrl=prompt('Paste an image URL for this article:');
   if(!imgUrl) return;
   const articles=loadManualArticles();
-  const idx=articles.findIndex(a=>a.url===url);
+  const idx=articles.findIndex(x=>x.url===a.url);
   if(idx===-1) return;
   articles[idx].image=imgUrl;
   saveManualArticles(articles);
