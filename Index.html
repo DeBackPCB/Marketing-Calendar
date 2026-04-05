@@ -926,7 +926,7 @@ async function afterLogin(){
   // Show/hide all header elements based on role
   document.getElementById('modeToggle').style.display=isMgr?'flex':'none';
   document.getElementById('mgrViewToggle').style.display='flex';
-  document.getElementById('vtNews').style.display=isMgr?'':'none';
+  document.getElementById('vtNews').style.display='';
   document.getElementById('mgrTools').style.display=isMgr?'flex':'none';
   document.getElementById('salesBadge').style.display=isMgr?'none':'block';
   document.getElementById('salesAddBtn').style.display=isMgr?'none':'flex';
@@ -1088,8 +1088,7 @@ function setMode(m){
   document.getElementById('salesBtn').classList.toggle('active',mode==='sales');
   document.getElementById('mgrTools').style.display=mode==='manager'?'flex':'none';
   document.getElementById('mgrViewToggle').style.display='flex';
-  document.getElementById('vtNews').style.display=mode==='manager'?'':'none';
-  if(mode==='sales'&&calView==='news') setCalView('list');
+  document.getElementById('vtNews').style.display='';
   document.getElementById('salesBadge').style.display=mode==='manager'?'none':'block';
   document.getElementById('salesAddBtn').style.display=mode==='manager'?'none':'flex';
   document.getElementById('mktRequestBtn').style.display=mode==='manager'?'none':'flex';
@@ -1934,7 +1933,7 @@ function newsHTML(autoArticles){
   let html=`<div class="news-header">
     <div><h2>In the News</h2><p>Mentions of Prairie City Bakery across the web${refreshed?' &mdash; updated '+refreshed:''}</p></div>
     <div style="display:flex;gap:8px;align-items:center;">
-      <button class="news-refresh-btn" style="background:var(--brown-mid);" onclick="openAddArticle()">+ Add Article</button>
+      ${mode==='manager'?`<button class="news-refresh-btn" style="background:var(--brown-mid);" onclick="openAddArticle()">+ Add Article</button>`:''}
       <button class="news-refresh-btn" onclick="renderNews(true)">&#8635; Refresh</button>
     </div>
   </div>
@@ -1955,7 +1954,7 @@ function newsHTML(autoArticles){
     const dateStr=a.date?new Date(a.date).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}):'';
     const img=a.image?`<img class="news-card-img" src="${a.image}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="news-card-img-placeholder" style="display:none">📰</div>`:`<div class="news-card-img-placeholder">📰</div>`;
     const delFn=a.manual?`removeManualArticle('${a.url.replace(/'/g,"\\'")}')`:`hideArticle('${a.url.replace(/'/g,"\\'")}')`;
-    const del=`<button onclick="${delFn};renderNews()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:.8rem;cursor:pointer;line-height:24px;text-align:center;" title="Remove">×</button>`;
+    const del=mode==='manager'?`<button onclick="${delFn};renderNews()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:.8rem;cursor:pointer;line-height:24px;text-align:center;" title="Remove">×</button>`:'';
     const readLink=a.manual?`<a href="${a.url}" target="_blank" rel="noopener" style="font-size:.75rem;color:var(--red);font-weight:600;text-decoration:none;margin-top:6px;display:inline-block;">Read Article →</a>`:'';
     const snippet=a.snippet.length>120?a.snippet.slice(0,120).trimEnd()+'…':a.snippet;
     html+=`<div class="news-card" style="position:relative;">${img}${del}<div class="news-card-body"><div class="news-card-source">${a.source}${a.manual?' <span style="font-size:.65rem;background:var(--gold);color:var(--brown-dark);padding:1px 5px;border-radius:4px;margin-left:4px;">Added</span>':''}</div><a class="news-card-title" href="${a.url}" target="_blank" rel="noopener">${a.title}</a><div class="news-card-snippet">${snippet}</div>${dateStr?`<div class="news-card-date">${dateStr}</div>`:''} ${readLink}</div></div>`;
