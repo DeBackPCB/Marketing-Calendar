@@ -821,7 +821,7 @@ let currentUser=null, currentRole=null, currentName=null, accessToken=null, isSa
 let allUsers=[];
 
 // Generic Supabase REST helper (uses session token when available)
-async function sbFetch(method, path, body=null){
+async function sbFetch(method, path, body=null, _retry=false){
   const opts={
     method,
     headers:{
@@ -833,6 +833,14 @@ async function sbFetch(method, path, body=null){
   };
   if(body) opts.body=JSON.stringify(body);
   const res=await fetch(SUPABASE_URL+path, opts);
+  if(res.status===401 && !_retry){
+    // Token expired — try to refresh then retry once
+    const refreshed=await restoreSession();
+    if(refreshed) return sbFetch(method,path,body,true);
+    // Refresh failed — send user back to login
+    doSignOut();
+    throw new Error('Session expired. Please sign in again.');
+  }
   if(!res.ok){
     const e=await res.json().catch(()=>({}));
     throw new Error(`Supabase error ${res.status}: ${e?.message||res.statusText}`);
