@@ -1898,44 +1898,34 @@ async function syncMailchimp(){
 
 
 // ════ IN THE NEWS ═════════════════════════════════
-let newsCache=null;let newsCacheTime=0;
-function loadManualArticles(){try{return JSON.parse(localStorage.getItem('pcb_manual_articles')||'[]');}catch{return[];}}
-function saveManualArticles(arr){localStorage.setItem('pcb_manual_articles',JSON.stringify(arr));}
-function loadHiddenArticles(){try{return new Set(JSON.parse(localStorage.getItem('pcb_hidden_articles')||'[]'));}catch{return new Set();}}
-function hideArticle(url){const h=loadHiddenArticles();h.add(url);localStorage.setItem('pcb_hidden_articles',JSON.stringify([...h]));}
+let _newsArticles=[];
 
-async function renderNews(forceRefresh=false){
+async function loadNewsArticles(){
+  const res=await sbFetch('GET','/rest/v1/news_articles?order=article_date.desc,created_at.desc&select=*');
+  _newsArticles=Array.isArray(res)?res:[];
+}
+
+async function renderNews(){
   const el=document.getElementById('newsView');
-  const CACHE_MS=3*60*60*1000;
-  if(!forceRefresh && newsCache && (Date.now()-newsCacheTime)<CACHE_MS){
-    el.innerHTML=newsHTML(newsCache);return;
-  }
-  el.innerHTML=`<div class="news-header"><div><h2>In the News</h2><p>Mentions of Prairie City Bakery across the web</p></div><button class="news-refresh-btn" disabled>Loading…</button></div><div class="news-empty"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg><div>Searching…</div></div>`;
+  el.innerHTML=`<div class="news-header"><div><h2>In the News</h2><p>Mentions of Prairie City Bakery across the web</p></div><button class="news-refresh-btn" disabled>Loading…</button></div><div class="news-empty"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg><div>Loading…</div></div>`;
   try{
-    const res=await fetch('/.netlify/functions/news-search');
-    const data=await res.json();
-    if(!res.ok||data.error) throw new Error(data.error||'Server error '+res.status);
-    newsCache=data; newsCacheTime=Date.now();
-    el.innerHTML=newsHTML(data);
+    await loadNewsArticles();
+    el.innerHTML=newsHTML();
   }catch(err){
-    el.innerHTML=`<div class="news-header"><div><h2>In the News</h2><p>Mentions of Prairie City Bakery across the web</p></div><button class="news-refresh-btn" onclick="renderNews(true)">Retry</button></div><div class="news-error">Could not load news: ${err.message}</div>`;
+    el.innerHTML=`<div class="news-header"><div><h2>In the News</h2></div><button class="news-refresh-btn" onclick="renderNews()">Retry</button></div><div class="news-error">Could not load articles: ${err.message}</div>`;
   }
 }
 
-function newsHTML(autoArticles){
-  const manual=loadManualArticles();
-  const hidden=loadHiddenArticles();
-  const all=[...autoArticles,...manual].filter(a=>!hidden.has(a.url)).sort((a,b)=>{
-    const da=a.date?new Date(a.date).getTime():0;
-    const db=b.date?new Date(b.date).getTime():0;
+function newsHTML(){
+  const all=[..._newsArticles].sort((a,b)=>{
+    const da=a.article_date?new Date(a.article_date).getTime():0;
+    const db=b.article_date?new Date(b.article_date).getTime():0;
     return db-da;
   });
-  const refreshed=newsCacheTime?new Date(newsCacheTime).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'';
   let html=`<div class="news-header">
-    <div><h2>In the News</h2><p>Mentions of Prairie City Bakery across the web${refreshed?' &mdash; updated '+refreshed:''}</p></div>
+    <div><h2>In the News</h2><p>Mentions of Prairie City Bakery across the web</p></div>
     <div style="display:flex;gap:8px;align-items:center;">
       ${mode==='manager'?`<button class="news-refresh-btn" style="background:var(--brown-mid);" onclick="openAddArticle()">+ Add Article</button>`:''}
-      <button class="news-refresh-btn" onclick="renderNews(true)">&#8635; Refresh</button>
     </div>
   </div>
   <div id="addArticleForm" style="display:none;background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:20px;">
@@ -1954,13 +1944,13 @@ function newsHTML(autoArticles){
   _newsItems=all;
   for(let ni=0;ni<all.length;ni++){
     const a=all[ni];
-    const dateStr=a.date?new Date(a.date).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}):'';
-    const addImgBtn=(!a.image&&a.manual&&mode==='manager')?`<button onclick="event.stopPropagation();promptArticleImage(${ni})" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:6px;font-size:.68rem;padding:3px 8px;cursor:pointer;white-space:nowrap;">+ Add Image</button>`:'';
+    const dateVal=a.article_date||a.date||'';
+    const dateStr=dateVal?new Date(dateVal).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}):'';
+    const addImgBtn=(!a.image&&mode==='manager')?`<button onclick="event.stopPropagation();promptArticleImage(${ni})" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:6px;font-size:.68rem;padding:3px 8px;cursor:pointer;white-space:nowrap;">+ Add Image</button>`:'';
     const img=a.image?`<img class="news-card-img" src="${a.image}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="news-card-img-placeholder" style="display:none">📰</div>`:`<div class="news-card-img-placeholder" style="position:relative;">📰${addImgBtn}</div>`;
     const del=mode==='manager'?`<button onclick="event.stopPropagation();deleteNewsItem(${ni})" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:.8rem;cursor:pointer;line-height:24px;text-align:center;" title="Remove">×</button>`:'';
-    const readLink=a.manual?`<a href="${a.url}" target="_blank" rel="noopener" style="font-size:.75rem;color:var(--red);font-weight:600;text-decoration:none;margin-top:6px;display:inline-block;">Read Article →</a>`:'';
-    const snippet=a.snippet.length>120?a.snippet.slice(0,120).trimEnd()+'…':a.snippet;
-    html+=`<div class="news-card" style="position:relative;">${img}${del}<div class="news-card-body"><div class="news-card-source">${a.source}${a.manual?' <span style="font-size:.65rem;background:var(--gold);color:var(--brown-dark);padding:1px 5px;border-radius:4px;margin-left:4px;">Added</span>':''}</div><a class="news-card-title" href="${a.url}" target="_blank" rel="noopener">${a.title}</a><div class="news-card-snippet">${snippet}</div>${dateStr?`<div class="news-card-date">${dateStr}</div>`:''} ${readLink}</div></div>`;
+    const snippet=(a.snippet||'').length>120?(a.snippet||'').slice(0,120).trimEnd()+'…':(a.snippet||'');
+    html+=`<div class="news-card" style="position:relative;">${img}${del}<div class="news-card-body"><div class="news-card-source">${a.source||''}</div><a class="news-card-title" href="${a.url}" target="_blank" rel="noopener">${a.title}</a><div class="news-card-snippet">${snippet}</div>${dateStr?`<div class="news-card-date">${dateStr}</div>`:''}<a href="${a.url}" target="_blank" rel="noopener" style="font-size:.75rem;color:var(--red);font-weight:600;text-decoration:none;margin-top:6px;display:inline-block;">Read Article →</a></div></div>`;
   }
   html+='</div>';
   return html;
@@ -2016,40 +2006,31 @@ async function fetchArticlePreview(){
   btn.textContent='Fetch Preview';btn.disabled=false;
 }
 
-function saveManualArticle(){
+async function saveManualArticle(){
   const data=_pendingArticle;
   if(!data){alert('No article loaded.');return;}
-  const articles=loadManualArticles();
-  if(articles.some(a=>a.url===data.url)){alert('This article is already in the list.');return;}
+  if(_newsArticles.some(a=>a.url===data.url)){alert('This article is already in the list.');return;}
   const now=new Date().toISOString();
-  articles.push({...data,date:data.date||now,manual:true,addedAt:now});
-  saveManualArticles(articles);
+  const row={id:uid(),title:data.title||'',url:data.url,snippet:data.snippet||'',image:data.image||null,source:data.source||'',article_date:data.date||now};
+  await sbFetch('POST','/rest/v1/news_articles',row);
   closeAddArticle();
-  // Re-render with existing cache + new manual article
-  if(newsCache) document.getElementById('newsView').innerHTML=newsHTML(newsCache);
+  await renderNews();
 }
 
-function deleteNewsItem(ni){
+async function deleteNewsItem(ni){
   const a=_newsItems[ni];
-  if(!a) return;
-  if(a.manual) saveManualArticles(loadManualArticles().filter(x=>x.url!==a.url));
-  else hideArticle(a.url);
-  renderNews();
+  if(!a||!confirm('Remove this article?')) return;
+  await sbFetch('DELETE',`/rest/v1/news_articles?id=eq.${a.id}`);
+  await renderNews();
 }
-function promptArticleImage(ni){
+
+async function promptArticleImage(ni){
   const a=_newsItems[ni];
   if(!a) return;
   const imgUrl=prompt('Paste an image URL for this article:');
   if(!imgUrl) return;
-  const articles=loadManualArticles();
-  const idx=articles.findIndex(x=>x.url===a.url);
-  if(idx===-1) return;
-  articles[idx].image=imgUrl;
-  saveManualArticles(articles);
-  if(newsCache) document.getElementById('newsView').innerHTML=newsHTML(newsCache);
-}
-function removeManualArticle(url){
-  saveManualArticles(loadManualArticles().filter(a=>a.url!==url));
+  await sbFetch('PATCH',`/rest/v1/news_articles?id=eq.${a.id}`,{image:imgUrl});
+  await renderNews();
 }
 
 function resetUpload(){parsedRows=[];['uploadPreview','uploadInfo','uploadError'].forEach(id=>{const el=document.getElementById(id);el.style.display='none';el.innerHTML='';});document.getElementById('importBtn').style.display='none';document.getElementById('xlsxInput').value='';}
