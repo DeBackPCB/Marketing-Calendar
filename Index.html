@@ -1062,7 +1062,7 @@ async function deleteInvalidDateEvents(){
 
 // ════ INIT ════════════════════════════════════════
 async function loadAndRender(){
-  document.getElementById('listView').innerHTML=`<div class="donut-loader"><div class="donut-orbit"><span>🍩</span><span>🍩</span><span>🍩</span><span>🍩</span><span>🍩</span></div><div class="donut-loader-text">Loading…</div></div>`;
+  document.getElementById('listView').innerHTML=`<div class="donut-loader"><div class="donut-orbit"><span>🍩</span><span>🍩</span><span>🍩</span><span>🍩</span><span>🍩</span></div></div>`;
   try{
     events=await loadEvents();
     fetchAllUsers(); // populate mention list (non-blocking)
