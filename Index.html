@@ -1009,23 +1009,10 @@ function eventToRow(e){
   };
 }
 
-// Load all events from Supabase — skip attachments_json for fast initial load
+// Load all events from Supabase
 async function loadEvents(){
-  const data=await sbFetch('GET','/rest/v1/events?select=id,title,event_type,start_date,end_date,run_date,status,priority,notes,shared_with_sales,sales_submitted,comments_json&order=start_date.asc');
-  return (data||[]).map(r=>({...rowToEvent(r),attachments:[],_attachmentsLoaded:false}));
-}
-
-// Fetch attachments for a single event on demand
-async function loadEventAttachments(id){
-  const e=events.find(x=>x.id===id);
-  if(!e||e._attachmentsLoaded) return;
-  try{
-    const data=await sbFetch('GET',`/rest/v1/events?id=eq.${id}&select=attachments_json`);
-    if(data&&data[0]){
-      try{e.attachments=JSON.parse(data[0].attachments_json||'[]');}catch{e.attachments=[];}
-    }
-    e._attachmentsLoaded=true;
-  }catch(e){}
+  const data=await sbFetch('GET','/rest/v1/events?select=*&order=start_date.asc');
+  return (data||[]).map(rowToEvent);
 }
 
 // Save (upsert) a single event to Supabase
@@ -1621,9 +1608,8 @@ async function addComment(id){
 }
 
 // ════ SALES DETAIL ════════════════════════════════
-async function openDetail(id){
+function openDetail(id){
   const e=events.find(x=>x.id===id);if(!e)return;
-  await loadEventAttachments(id);
   const c=tColor(e.type);
   const rd=e.runDate?new Date(e.runDate+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}):'';
   const ed=new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
@@ -1652,9 +1638,8 @@ async function openDetail(id){
 }
 
 // Manager detail view — same modal as sales but with edit/delete actions
-async function openMgrDetail(id){
+function openMgrDetail(id){
   const e=events.find(x=>x.id===id);if(!e)return;
-  await loadEventAttachments(id);
   const c=tColor(e.type);
   const rd=e.runDate?new Date(e.runDate+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}):'';
   const ed=new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
@@ -1789,8 +1774,7 @@ function cycleAttach(dir){
   document.getElementById('prev-counter').textContent=`${_previewIdx+1} / ${_previewAttachments.length}`;
 }
 
-async function editEvent(id){
-  await loadEventAttachments(id);
+function editEvent(id){
   const e=events.find(x=>x.id===id);if(!e)return;
   editingId=id;pendingAttach=[...(e.attachments||[])];
   fillTypes(e.type);
