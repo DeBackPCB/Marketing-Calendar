@@ -401,6 +401,21 @@ body{background:var(--cream);font-family:var(--font-body);font-weight:400;color:
 /* FILE PREVIEW MODAL */
 .preview-overlay{display:none;position:fixed;inset:0;background:rgba(10,5,2,.82);z-index:1100;align-items:center;justify-content:center;padding:14px;}
 .preview-overlay.open{display:flex;}
+/* NOTIFICATIONS PANEL */
+.notif-panel{display:none;position:fixed;top:70px;right:16px;width:340px;max-height:480px;background:var(--warm-white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px var(--shadow);z-index:1200;flex-direction:column;overflow:hidden;}
+.notif-panel.open{display:flex;}
+.notif-panel-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.notif-panel-title{font-family:var(--font-display);font-size:.95rem;font-weight:700;color:var(--brown-dark);}
+.notif-mark-read{background:none;border:none;font-size:.72rem;color:var(--red);cursor:pointer;font-weight:700;}
+.notif-list{overflow-y:auto;flex:1;}
+.notif-item{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;cursor:pointer;transition:background .15s;}
+.notif-item:hover{background:var(--cream);}
+.notif-item.unread{background:#fffbf0;}
+.notif-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);flex-shrink:0;margin-top:5px;}
+.notif-item.read .notif-dot{background:transparent;border:1.5px solid var(--border);}
+.notif-msg{font-size:.8rem;color:var(--brown-mid);line-height:1.4;}
+.notif-time{font-size:.68rem;color:var(--brown-light);margin-top:3px;}
+.notif-empty{padding:32px 16px;text-align:center;color:var(--brown-light);font-size:.82rem;}
 .preview-modal{background:white;border-radius:12px;width:860px;max-width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.45);animation:modalIn .18s ease;overflow:hidden;}
 .preview-modal-header{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--border);background:var(--brown-dark);flex-shrink:0;}
 .preview-modal-icon{font-size:1.3rem;flex-shrink:0;}
@@ -562,6 +577,10 @@ body{background:var(--cream);font-family:var(--font-body);font-weight:400;color:
     </button>
     <button id="mktRequestBtn" class="add-btn" style="display:none;background:#1e8a3c;color:white;box-shadow:0 0 0 2px rgba(30,138,60,.25);" onclick="openJotformModal()">
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Marketing Request
+    </button>
+    <button class="signout-btn" id="notifBtn" onclick="openNotifications()" style="display:none;position:relative;">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path stroke-linecap="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+      <span id="notifBadge" style="display:none;position:absolute;top:-3px;right:-3px;background:#E8C97A;color:#3D1A0D;font-size:.55rem;font-weight:900;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px;"></span>
     </button>
     <button class="signout-btn" id="profileBtn" onclick="openProfile()" style="display:none">
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
@@ -780,6 +799,15 @@ body{background:var(--cream);font-family:var(--font-body);font-weight:400;color:
   </div></div>
 </div>
 
+<!-- NOTIFICATIONS PANEL -->
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-panel-header">
+    <span class="notif-panel-title">Notifications</span>
+    <button class="notif-mark-read" onclick="markAllRead()">Mark all read</button>
+  </div>
+  <div class="notif-list" id="notifList"></div>
+</div>
+
 <!-- FILE PREVIEW MODAL -->
 <div class="preview-overlay" id="previewOverlay" onclick="if(event.target===this)closePreview()">
   <div class="preview-modal">
@@ -928,16 +956,25 @@ async function fetchRole(){
   }catch(e){return 'sales';}
 }
 
+// allUsers stores {id, name, email} for mention autocomplete + notifications
+let allUsersData=[];
 async function fetchAllUsers(){
   try{
-    const data=await sbFetch('GET','/rest/v1/profiles?select=id');
-    // Get display names from auth metadata via users list — fall back to emails from events
+    // Load profiles with display names and emails
+    const profiles=await sbFetch('GET','/rest/v1/profiles?select=id,role,display_name,email');
     const names=new Set();
-    // Collect names from existing events' submitter fields
+    if(Array.isArray(profiles)){
+      profiles.forEach(p=>{
+        const name=p.display_name||(p.email?p.email.split('@')[0]:null);
+        if(name){names.add(name);if(!p.display_name)p.display_name=name;}
+      });
+    }
+    // Also collect from event submitter fields
     events.forEach(e=>{const s=getSubmitter(e.notes);if(s)names.add(s);});
     if(currentName) names.add(currentName);
     allUsers=[...names].sort();
-  }catch(e){allUsers=currentName?[currentName]:[];}
+    allUsersData=Array.isArray(profiles)?profiles:[];
+  }catch(e){allUsers=currentName?[currentName]:[];allUsersData=[];}
 }
 async function afterLogin(){
   currentRole=await fetchRole();
@@ -957,9 +994,12 @@ async function afterLogin(){
   document.getElementById('headerSub').innerHTML=isMgr?'Prairie City Bakery &mdash; Internal':'Prairie City Bakery';
   document.getElementById('profileBtn').style.display='flex';
   document.getElementById('profileBtn').title=currentUser?.email||'';
+  document.getElementById('notifBtn').style.display='flex';
   const nameEl=document.getElementById('profileBtnName');
   if(nameEl) nameEl.textContent=currentName||(currentUser?.email?.split('@')[0]||'Account');
   await loadAndRender();
+  loadNotifications();
+  setInterval(loadNotifications, 60000); // poll every minute
 }
 
 async function doSignOut(){
@@ -1364,7 +1404,7 @@ function renderList(){
   const groups={};
   sorted.forEach(e=>{const d=new Date((e.runDate||e.date)+'T00:00:00'),k=d.toLocaleString('default',{month:'long',year:'numeric'});(groups[k]=groups[k]||[]).push(e);});
   container.innerHTML=Object.entries(groups).map(([mo,evts])=>{
-    const key='collapse-'+mo.replace(/\s/g,'-');
+    const key='collapse-'+(currentUser?.id||'guest')+'-'+mo.replace(/\s/g,'-');
     const collapsed=sessionStorage.getItem(key)==='1';
     return `<div class="month-group${collapsed?' collapsed':''}" id="${key}">
       <div class="month-heading" onclick="toggleMonthCollapse('${key}')">
@@ -1618,6 +1658,21 @@ async function addComment(id){
   await saveE(e);
   const section=document.getElementById('comments-section-'+id);
   if(section)section.outerHTML=commentsHTML(e);
+  // Notify mentioned users
+  const mentions=extractMentions(text);
+  for(const m of mentions){
+    if(m.id===currentUser?.id) continue;
+    const msg=`${author} mentioned you in a comment on "${e.title}"`;
+    triggerNotification({
+      type:'mention',
+      recipientIds:[m.id],
+      message:msg,
+      eventId:id,
+      emailTo:m.email||null,
+      emailSubject:`You were mentioned in a comment`,
+      emailHtml:`<p>${msg}</p><p><a href="${window.location.origin}">View Calendar →</a></p>`
+    });
+  }
 }
 
 // ════ SALES DETAIL ════════════════════════════════
@@ -2207,6 +2262,20 @@ async function saveSalesItem(){
   try{
     await saveE(item);
     closeModal('salesOverlay');render();
+    // Notify all managers
+    const managers=allUsersData.filter(u=>u.role==='manager');
+    if(managers.length){
+      const msg=`${submitterName} submitted a new marketing request: "${title}"`;
+      triggerNotification({
+        type:'sales_request',
+        recipientIds:managers.map(u=>u.id),
+        message:msg,
+        eventId:item.id,
+        emailTo:managers.map(u=>u.email).filter(Boolean),
+        emailSubject:`New Marketing Request from ${submitterName}`,
+        emailHtml:`<p>${msg}</p><p>Date: ${date}</p><p><a href="${window.location.origin}">View in Calendar →</a></p>`
+      });
+    }
   }catch(err){
     events=events.filter(x=>x.id!==item.id);
     const msg=err?.message||String(err);
@@ -2215,6 +2284,93 @@ async function saveSalesItem(){
   }finally{
     btn.disabled=false;btn.textContent='Submit';
   }
+}
+
+// ════ NOTIFICATIONS ═══════════════════════════════
+let _notifications=[];
+async function loadNotifications(){
+  if(!currentUser) return;
+  try{
+    const data=await sbFetch('GET',`/rest/v1/notifications?user_id=eq.${currentUser.id}&order=created_at.desc&limit=30`);
+    _notifications=Array.isArray(data)?data:[];
+    updateNotifBadge();
+  }catch(e){_notifications=[];}
+}
+function updateNotifBadge(){
+  const unread=_notifications.filter(n=>!n.read).length;
+  const badge=document.getElementById('notifBadge');
+  if(badge){
+    if(unread>0){badge.style.display='flex';badge.textContent=unread>9?'9+':unread;}
+    else{badge.style.display='none';}
+  }
+}
+function openNotifications(){
+  const panel=document.getElementById('notifPanel');
+  if(panel.classList.contains('open')){panel.classList.remove('open');return;}
+  renderNotifList();
+  panel.classList.add('open');
+  document.addEventListener('click',closeNotifOutside,{once:true});
+}
+function closeNotifOutside(e){
+  const panel=document.getElementById('notifPanel');
+  const btn=document.getElementById('notifBtn');
+  if(panel&&!panel.contains(e.target)&&e.target!==btn){panel.classList.remove('open');}
+}
+function renderNotifList(){
+  const list=document.getElementById('notifList');
+  if(!list) return;
+  if(!_notifications.length){list.innerHTML='<div class="notif-empty">No notifications yet</div>';return;}
+  list.innerHTML=_notifications.map(n=>{
+    const ago=timeAgo(n.created_at);
+    return `<div class="notif-item ${n.read?'read':'unread'}" onclick="clickNotif('${n.id}','${n.event_id||''}')">
+      <div class="notif-dot"></div>
+      <div><div class="notif-msg">${n.message}</div><div class="notif-time">${ago}</div></div>
+    </div>`;
+  }).join('');
+}
+function timeAgo(ts){
+  const diff=Date.now()-new Date(ts).getTime();
+  const m=Math.floor(diff/60000),h=Math.floor(diff/3600000),d=Math.floor(diff/86400000);
+  if(d>0) return d+'d ago';
+  if(h>0) return h+'h ago';
+  if(m>0) return m+'m ago';
+  return 'just now';
+}
+async function clickNotif(id,eventId){
+  document.getElementById('notifPanel').classList.remove('open');
+  // Mark as read
+  await sbFetch('PATCH',`/rest/v1/notifications?id=eq.${id}`,{read:true});
+  _notifications=_notifications.map(n=>n.id===id?{...n,read:true}:n);
+  updateNotifBadge();
+  // Navigate to event if linked
+  if(eventId){const e=events.find(x=>x.id===eventId);if(e){if(mode==='manager')openMgrDetail(eventId);else openDetail(eventId);}}
+}
+async function markAllRead(){
+  if(!currentUser) return;
+  await sbFetch('PATCH',`/rest/v1/notifications?user_id=eq.${currentUser.id}&read=eq.false`,{read:true});
+  _notifications=_notifications.map(n=>({...n,read:true}));
+  updateNotifBadge();
+  renderNotifList();
+}
+
+// Send notification via Netlify function
+async function triggerNotification(payload){
+  try{
+    await fetch('/.netlify/functions/send-notification',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+  }catch(e){}
+}
+
+// Extract @mentions from comment text, return matching user data
+function extractMentions(text){
+  const matches=[...text.matchAll(/@([\w. -]+)/g)].map(m=>m[1].trim());
+  return matches.map(name=>{
+    const u=allUsersData.find(p=>p.display_name===name);
+    return u?{name,id:u.id,email:u.email}:null;
+  }).filter(Boolean);
 }
 
 // ════ PROFILE ═════════════════════════════════════

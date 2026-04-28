@@ -11,3 +11,7 @@
 
 [functions."news-search"]
   node_version = "18"
+
+[functions."monthly-summary"]
+  node_version = "18"
+  schedule = "0 13 24 * *"
