@@ -1669,8 +1669,10 @@ async function addComment(id){
       message:msg,
       eventId:id,
       emailTo:m.email||null,
-      emailSubject:`You were mentioned in a comment`,
-      emailHtml:`<p>${msg}</p><p><a href="${window.location.origin}">View Calendar →</a></p>`
+      mentionedBy:author,
+      eventTitle:e.title,
+      commentText:text,
+      recipientName:m.name||null,
     });
   }
 }
@@ -2272,8 +2274,10 @@ async function saveSalesItem(){
         message:msg,
         eventId:item.id,
         emailTo:managers.map(u=>u.email).filter(Boolean),
-        emailSubject:`New Marketing Request from ${submitterName}`,
-        emailHtml:`<p>${msg}</p><p>Date: ${date}</p><p><a href="${window.location.origin}">View in Calendar →</a></p>`
+        submittedBy:submitterName,
+        eventTitle:title,
+        eventType:document.getElementById('s-type').value,
+        eventDate:date,
       });
     }
   }catch(err){
