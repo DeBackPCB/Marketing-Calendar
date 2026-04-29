@@ -1758,6 +1758,10 @@ function insertMention(id, name){
   ta.focus();
 }
 
+async function saveCommentsOnly(e){
+  await sbFetch('PATCH',`/rest/v1/events?id=eq.${e.id}`,{comments_json:JSON.stringify(e.comments||[])});
+}
+
 async function addComment(id){
   const e=events.find(x=>x.id===id);if(!e)return;
   hideMentionDropdown(id);
@@ -1767,7 +1771,7 @@ async function addComment(id){
   e.comments=e.comments||[];
   e.comments.push({id:uid(),author,text,ts:new Date().toISOString()});
   inp.value='';
-  await saveE(e);
+  await saveCommentsOnly(e);
   notifyMentions(e,text,author);
   const section=document.getElementById('comments-section-'+id);
   if(section)section.outerHTML=commentsHTML(e);
@@ -1780,7 +1784,7 @@ async function deleteComment(eventId, commentId){
   if(c.author!==me)return;
   if(!confirm('Delete this comment?'))return;
   e.comments=e.comments.filter(x=>x.id!==commentId);
-  await saveE(e);
+  await saveCommentsOnly(e);
   const section=document.getElementById('comments-section-'+eventId);
   if(section)section.outerHTML=commentsHTML(e);
 }
