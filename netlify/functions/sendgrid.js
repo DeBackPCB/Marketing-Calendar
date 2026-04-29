@@ -3,9 +3,26 @@ const FROM_NAME = process.env.SENDGRID_FROM_NAME || 'PCB Marketing Calendar';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
+
+async function verifySupabaseUser(authHeader) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7);
+  const url = process.env.SUPABASE_URL;
+  const anon = process.env.SUPABASE_ANON_KEY;
+  if (!url || !anon) return null;
+  try {
+    const res = await fetch(`${url}/auth/v1/user`, {
+      headers: { 'apikey': anon, 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
 
 exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') {
@@ -18,6 +35,11 @@ exports.handler = async function(event) {
   const apiKey = process.env.SENDGRID_API_KEY;
   if (!apiKey) {
     return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'SENDGRID_API_KEY not set' }) };
+  }
+
+  const user = await verifySupabaseUser(event.headers.authorization || event.headers.Authorization);
+  if (!user) {
+    return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Unauthorized' }) };
   }
 
   let payload;
