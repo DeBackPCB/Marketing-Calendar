@@ -953,10 +953,9 @@ async function fetchRole(){
 
 async function fetchAllUsers(){
   try{
-    const data=await sbFetch('GET','/rest/v1/profiles?select=id');
-    // Get display names from auth metadata via users list — fall back to emails from events
+    const data=await sbFetch('GET','/rest/v1/profiles?select=display_name');
     const names=new Set();
-    // Collect names from existing events' submitter fields
+    (data||[]).forEach(p=>{if(p.display_name)names.add(p.display_name);});
     events.forEach(e=>{const s=getSubmitter(e.notes);if(s)names.add(s);});
     if(currentName) names.add(currentName);
     allUsers=[...names].sort();
