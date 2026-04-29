@@ -1049,6 +1049,61 @@ async function saveE(eventToSave){
 async function deleteFromSP(id){
   await sbFetch('DELETE',`/rest/v1/events?id=eq.${id}`);
 }
+
+// ════ EMAIL NOTIFICATIONS ═════════════════════════
+async function sendNotify(to, subject, html){
+  if(!to||!to.length||!accessToken)return;
+  try{
+    await fetch('/.netlify/functions/sendgrid',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+accessToken},
+      body:JSON.stringify({to,subject,html})
+    });
+  }catch(err){console.warn('Notify failed:',err);}
+}
+async function notifyManagersOfNewEvent(e){
+  try{
+    const mgrs=await sbFetch('GET','/rest/v1/profiles?select=email&role=eq.manager');
+    const recipients=(mgrs||[]).map(p=>p.email).filter(Boolean);
+    if(!recipients.length)return;
+    const submitter=currentName||(currentUser?.email?.split('@')[0]||'Sales');
+    const date=new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    const html=`<div style="font-family:Arial,sans-serif;max-width:600px;color:#333;">
+      <h2 style="color:#8b3a1f;">New Sales Submission</h2>
+      <p><strong>${submitter}</strong> submitted a new event for review:</p>
+      <table style="border-collapse:collapse;font-size:14px;">
+        <tr><td style="padding:6px 12px;color:#666;">Title</td><td style="padding:6px 12px;font-weight:600;">${e.title}</td></tr>
+        <tr><td style="padding:6px 12px;color:#666;">Type</td><td style="padding:6px 12px;">${e.type||''}</td></tr>
+        <tr><td style="padding:6px 12px;color:#666;">Date</td><td style="padding:6px 12px;">${date}</td></tr>
+      </table>
+      <p style="margin-top:18px;"><a href="${location.origin}" style="background:#8b3a1f;color:white;padding:8px 18px;border-radius:5px;text-decoration:none;">Open Calendar</a></p>
+    </div>`;
+    await sendNotify(recipients,`New Sales Submission: ${e.title}`,html);
+  }catch(err){console.warn('notifyManagers failed:',err);}
+}
+async function notifyMentions(e, commentText, authorName){
+  try{
+    const matches=commentText.match(/@[A-Za-z][A-Za-z0-9 .'-]*/g);
+    if(!matches||!matches.length)return;
+    const profiles=await sbFetch('GET','/rest/v1/profiles?select=display_name,email');
+    if(!profiles||!profiles.length)return;
+    const mentioned=new Set();
+    for(const m of matches){
+      const tag=m.slice(1).trim();
+      const hit=profiles.find(p=>p.display_name&&tag.toLowerCase().startsWith(p.display_name.toLowerCase()));
+      if(hit&&hit.email)mentioned.add(hit.email);
+    }
+    if(!mentioned.size)return;
+    const safe=commentText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const html=`<div style="font-family:Arial,sans-serif;max-width:600px;color:#333;">
+      <h2 style="color:#8b3a1f;">You were mentioned in a comment</h2>
+      <p><strong>${authorName}</strong> mentioned you on <strong>${e.title}</strong>:</p>
+      <blockquote style="border-left:3px solid #8b3a1f;padding:8px 14px;margin:12px 0;background:#faf6f1;">${safe}</blockquote>
+      <p style="margin-top:18px;"><a href="${location.origin}" style="background:#8b3a1f;color:white;padding:8px 18px;border-radius:5px;text-decoration:none;">Open Calendar</a></p>
+    </div>`;
+    await sendNotify([...mentioned],`Mentioned by ${authorName} on "${e.title}"`,html);
+  }catch(err){console.warn('notifyMentions failed:',err);}
+}
 async function deleteInvalidDateEvents(){
   const invalid=events.filter(e=>!e.date||isNaN(new Date(e.date+'T00:00:00')));
   if(!invalid.length){alert('No events with invalid dates found.');return;}
@@ -1616,6 +1671,7 @@ async function addComment(id){
   e.comments.push({id:uid(),author,text,ts:new Date().toISOString()});
   inp.value='';
   await saveE(e);
+  notifyMentions(e,text,author);
   const section=document.getElementById('comments-section-'+id);
   if(section)section.outerHTML=commentsHTML(e);
 }
@@ -2206,6 +2262,7 @@ async function saveSalesItem(){
   events.push(item);
   try{
     await saveE(item);
+    notifyManagersOfNewEvent(item);
     closeModal('salesOverlay');render();
   }catch(err){
     events=events.filter(x=>x.id!==item.id);

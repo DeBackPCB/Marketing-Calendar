@@ -11,3 +11,9 @@
 
 [functions."news-search"]
   node_version = "18"
+
+[functions."sendgrid"]
+  node_version = "18"
+
+[functions."monthly-digest"]
+  node_version = "18"
