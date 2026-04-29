@@ -132,6 +132,23 @@ body{background:var(--cream);font-family:var(--font-body);font-weight:400;color:
 .comment-item{display:flex;gap:9px;margin-bottom:10px;}
 .comment-avatar{width:28px;height:28px;border-radius:50%;background:var(--caramel);color:white;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .comment-bubble{background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:7px 10px;flex:1;min-width:0;}
+.comment-head{display:flex;align-items:center;gap:8px;}
+.comment-del-btn{margin-left:auto;background:none;border:none;color:var(--brown-light);font-size:1rem;line-height:1;cursor:pointer;padding:0 4px;border-radius:4px;}
+.comment-del-btn:hover{background:rgba(0,0,0,.06);color:var(--red);}
+.notif-btn{position:relative;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:white;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+.notif-btn:hover{background:rgba(255,255,255,.18);}
+.notif-btn svg{width:18px;height:18px;}
+.notif-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#e53935;color:white;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #6b1f0f;}
+.notif-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:white;border:1px solid var(--border);border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999;width:340px;max-height:420px;overflow-y:auto;color:var(--brown-dark);}
+.notif-dropdown-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border);font-weight:700;font-size:.78rem;}
+.notif-dropdown-head button{background:none;border:none;color:var(--red);font-size:.7rem;font-weight:600;cursor:pointer;padding:0;}
+.notif-item{padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-size:.78rem;}
+.notif-item:hover{background:var(--cream);}
+.notif-item:last-child{border-bottom:none;}
+.notif-item.unread{background:#fffbe9;}
+.notif-item-meta{font-size:.68rem;color:var(--brown-light);margin-bottom:4px;}
+.notif-item-text{color:var(--brown-dark);line-height:1.35;}
+.notif-empty{padding:24px 14px;text-align:center;color:var(--brown-light);font-size:.78rem;}
 .comment-author{font-size:.67rem;font-weight:700;color:var(--brown-mid);}
 .comment-time{font-size:.6rem;color:#bbb;margin-left:5px;}
 .comment-text{font-size:.78rem;color:var(--brown-dark);margin-top:2px;white-space:pre-wrap;word-break:break-word;}
@@ -563,6 +580,12 @@ body{background:var(--cream);font-family:var(--font-body);font-weight:400;color:
     <button id="mktRequestBtn" class="add-btn" style="display:none;background:#1e8a3c;color:white;box-shadow:0 0 0 2px rgba(30,138,60,.25);" onclick="openJotformModal()">
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Marketing Request
     </button>
+    <div id="notifWrap" style="position:relative;display:none;">
+      <button class="notif-btn" id="notifBtn" title="Mentions" onclick="toggleNotifDropdown(event)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0a3 3 0 11-6 0"/></svg>
+        <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+      </button>
+    </div>
     <button class="signout-btn" id="profileBtn" onclick="openProfile()" style="display:none">
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
       <span id="profileBtnName">Account</span>
@@ -1081,6 +1104,77 @@ async function notifyManagersOfNewEvent(e){
     await sendNotify(recipients,`New Sales Submission: ${e.title}`,html);
   }catch(err){console.warn('notifyManagers failed:',err);}
 }
+// ════ IN-APP MENTION INBOX ════════════════════════
+function _mentionsKey(){return 'mentionsLastRead:'+(currentUser?.id||'anon');}
+function _getLastReadTs(){return localStorage.getItem(_mentionsKey())||'1970-01-01T00:00:00.000Z';}
+function _setLastReadTs(ts){localStorage.setItem(_mentionsKey(),ts);}
+function _scanMentionsForMe(){
+  const me=(currentName||'').toLowerCase();
+  if(!me)return [];
+  const out=[];
+  for(const e of events){
+    for(const c of (e.comments||[])){
+      if(!c.text||!c.ts)continue;
+      if(c.author===currentName)continue;
+      const matches=c.text.match(/@[A-Za-z][A-Za-z0-9 .'-]*/g)||[];
+      const hit=matches.some(m=>m.slice(1).toLowerCase().startsWith(me));
+      if(hit)out.push({eventId:e.id,eventTitle:e.title,commentId:c.id,author:c.author,text:c.text,ts:c.ts});
+    }
+  }
+  out.sort((a,b)=>b.ts.localeCompare(a.ts));
+  return out;
+}
+function refreshNotifBadge(){
+  const wrap=document.getElementById('notifWrap');
+  if(!currentUser){if(wrap)wrap.style.display='none';return;}
+  if(wrap)wrap.style.display='block';
+  const lastRead=_getLastReadTs();
+  const items=_scanMentionsForMe();
+  const unread=items.filter(i=>i.ts>lastRead).length;
+  const badge=document.getElementById('notifBadge');
+  if(badge){
+    if(unread>0){badge.textContent=unread>99?'99+':String(unread);badge.style.display='flex';}
+    else{badge.style.display='none';}
+  }
+}
+function toggleNotifDropdown(ev){
+  ev.stopPropagation();
+  const existing=document.getElementById('notifDropdown');
+  if(existing){existing.remove();return;}
+  const wrap=document.getElementById('notifWrap');if(!wrap)return;
+  const lastRead=_getLastReadTs();
+  const items=_scanMentionsForMe();
+  const dd=document.createElement('div');dd.className='notif-dropdown';dd.id='notifDropdown';
+  const body=items.length?items.map(i=>{
+    const d=new Date(i.ts);
+    const time=d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const safe=(i.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const unreadCls=i.ts>lastRead?' unread':'';
+    return `<div class="notif-item${unreadCls}" onclick="jumpToMention('${i.eventId}')"><div class="notif-item-meta"><strong>${i.author}</strong> &middot; ${i.eventTitle} &middot; ${time}</div><div class="notif-item-text">${safe}</div></div>`;
+  }).join(''):'<div class="notif-empty">No mentions yet.</div>';
+  dd.innerHTML=`<div class="notif-dropdown-head"><span>Mentions</span>${items.length?'<button onclick="markMentionsRead(event)">Mark all read</button>':''}</div>${body}`;
+  wrap.appendChild(dd);
+  setTimeout(()=>{document.addEventListener('click',_closeNotifOnOutside,{once:true});},0);
+}
+function _closeNotifOnOutside(ev){
+  const dd=document.getElementById('notifDropdown');
+  if(dd&&!dd.contains(ev.target)&&!document.getElementById('notifBtn').contains(ev.target))dd.remove();
+}
+function markMentionsRead(ev){
+  ev.stopPropagation();
+  _setLastReadTs(new Date().toISOString());
+  refreshNotifBadge();
+  const dd=document.getElementById('notifDropdown');if(dd)dd.remove();
+}
+function jumpToMention(eventId){
+  _setLastReadTs(new Date().toISOString());
+  const dd=document.getElementById('notifDropdown');if(dd)dd.remove();
+  refreshNotifBadge();
+  const e=events.find(x=>x.id===eventId);if(!e)return;
+  if(typeof openEditor==='function'&&currentRole==='manager')openEditor(eventId);
+  else if(typeof openDetail==='function')openDetail(eventId);
+}
+
 async function notifyMentions(e, commentText, authorName){
   try{
     const matches=commentText.match(/@[A-Za-z][A-Za-z0-9 .'-]*/g);
@@ -1320,6 +1414,7 @@ function render(skipFilters=false){
   if(!skipFilters) renderFilters();
   renderStats();renderUpcoming();
   updateReqBadge();
+  refreshNotifBadge();
   if(calView==='list') renderList();
   else if(calView==='cal') renderCalGrid();
   else if(calView==='requests') renderRequests();
@@ -1579,13 +1674,16 @@ function renderMentions(text){
     .replace(/@([\w. -]+)/g,'<span class="mention-tag">@$1</span>');
 }
 function commentsHTML(e){
+  const me=currentName||(currentUser?.email?.split('@')[0]||'');
   const comments=e.comments||[];
   const list=comments.length
     ? comments.map(c=>{
         const initials=c.author.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?';
         const d=new Date(c.ts);
         const time=d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-        return `<div class="comment-item"><div class="comment-avatar">${initials}</div><div class="comment-bubble"><div><span class="comment-author">${c.author}</span><span class="comment-time">${time}</span></div><div class="comment-text">${renderMentions(c.text)}</div></div></div>`;
+        const canDel=c.author===me;
+        const delBtn=canDel?`<button class="comment-del-btn" title="Delete comment" onclick="deleteComment('${e.id}','${c.id}')">&times;</button>`:'';
+        return `<div class="comment-item"><div class="comment-avatar">${initials}</div><div class="comment-bubble"><div class="comment-head"><span class="comment-author">${c.author}</span><span class="comment-time">${time}</span>${delBtn}</div><div class="comment-text">${renderMentions(c.text)}</div></div></div>`;
       }).join('')
     : '<div class="no-comments">No comments yet.</div>';
   return `<div class="comments-section" id="comments-section-${e.id}">
@@ -1673,6 +1771,18 @@ async function addComment(id){
   await saveE(e);
   notifyMentions(e,text,author);
   const section=document.getElementById('comments-section-'+id);
+  if(section)section.outerHTML=commentsHTML(e);
+}
+
+async function deleteComment(eventId, commentId){
+  const e=events.find(x=>x.id===eventId);if(!e||!e.comments)return;
+  const c=e.comments.find(x=>x.id===commentId);if(!c)return;
+  const me=currentName||(currentUser?.email?.split('@')[0]||'');
+  if(c.author!==me)return;
+  if(!confirm('Delete this comment?'))return;
+  e.comments=e.comments.filter(x=>x.id!==commentId);
+  await saveE(e);
+  const section=document.getElementById('comments-section-'+eventId);
   if(section)section.outerHTML=commentsHTML(e);
 }
 
