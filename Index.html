@@ -646,11 +646,11 @@ body{background:var(--cream);font-family:var(--font-body);font-weight:400;color:
     </div>
     <div class="form-row"><label>Notes</label><textarea id="f-notes" placeholder="Channel, audience, campaign details..."></textarea></div>
     <div class="form-row">
-      <label>Attachments (PDF, images, docs — max 25MB each)</label>
+      <label>Attachments (PDF, images, videos, docs — max 25MB each)</label>
       <div class="file-drop-zone" id="fileDropZone" onclick="document.getElementById('attachInput').click()" ondragover="fileDragOver(event)" ondragleave="fileDragLeave()" ondrop="fileDrop(event)">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
         <p><strong>Click to attach</strong> or drag and drop &mdash; up to 25MB each</p>
-        <input type="file" id="attachInput" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.html,.htm" onchange="handleAttachSelect(event)"/>
+        <input type="file" id="attachInput" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.html,.htm,.mp4,.mov,.webm,.ogg,.m4v,.avi,.mkv" onchange="handleAttachSelect(event)"/>
       </div>
       <div class="pending-files" id="pendingFiles"></div>
     </div>
@@ -747,7 +747,7 @@ body{background:var(--cream);font-family:var(--font-body);font-weight:400;color:
       <div class="file-drop-zone" id="salesFileDropZone" onclick="document.getElementById('salesAttachInput').click()" ondragover="fileDragOver2(event)" ondragleave="fileDragLeave2()" ondrop="fileDrop2(event)">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
         <p><strong>Click to attach</strong> or drag and drop &mdash; up to 25MB each</p>
-        <input type="file" id="salesAttachInput" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.ppt,.pptx,.xls,.xlsx" onchange="handleSalesAttach(event)"/>
+        <input type="file" id="salesAttachInput" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp4,.mov,.webm,.ogg,.m4v" onchange="handleSalesAttach(event)"/>
       </div>
       <div class="pending-files" id="salesPendingFiles"></div>
     </div>
@@ -1871,6 +1871,8 @@ function previewFile(dataUrl,name,size){
   const isImage=['png','jpg','jpeg','gif','webp','bmp','svg'].includes(ext);
   const isPdf=ext==='pdf';
   const isHtml=['html','htm'].includes(ext);
+  const isVideo=['mp4','webm','ogg','ogv','mov','m4v','avi','mkv'].includes(ext)||(dataUrl.startsWith('data:video/'));
+  const isAudio=['mp3','wav','m4a','aac','flac'].includes(ext)||(dataUrl.startsWith('data:audio/'));
   document.getElementById('prev-icon').textContent=fileEmoji(dataUrl.split(';')[0].replace('data:',''));
   document.getElementById('prev-name').textContent=name;
   document.getElementById('prev-size').textContent=size?fmtB(size):'';
@@ -1879,6 +1881,22 @@ function previewFile(dataUrl,name,size){
   const body=document.getElementById('prev-body');
   if(isImage){
     body.innerHTML=`<img src="${dataUrl}" alt="${name}" style="padding:16px;"/>`;
+  } else if(isVideo){
+    try{
+      const base64=dataUrl.split(',')[1];
+      const mime=(dataUrl.split(';')[0].replace('data:','')||`video/${ext==='mov'?'quicktime':ext}`);
+      const binary=atob(base64);
+      const bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+      const blob=new Blob([bytes],{type:mime});
+      const blobUrl=URL.createObjectURL(blob);
+      body.innerHTML=`<video src="${blobUrl}" controls playsinline style="display:block;max-width:100%;max-height:80vh;margin:0 auto;background:#000;"></video>`;
+      document.getElementById('previewOverlay')._blobUrl=blobUrl;
+    }catch(err){
+      body.innerHTML=`<div class="preview-unsupported"><div class="pu-icon">🎬</div><h3>${name}</h3><p>Could not play this video in the browser. Download it to view.</p><button class="pu-dl" onclick="document.getElementById('prev-dl-btn').click()">Download ${name}</button></div>`;
+    }
+  } else if(isAudio){
+    body.innerHTML=`<div style="padding:32px;text-align:center;"><div style="font-size:3rem;margin-bottom:12px;">🎵</div><audio src="${dataUrl}" controls style="width:100%;max-width:480px;"></audio></div>`;
   } else if(isPdf){
     // Convert base64 dataUrl to Blob URL — browsers block base64 PDFs in iframes
     try{
@@ -2269,7 +2287,9 @@ function downloadTemplate(){const wb=XLSX.utils.book_new();const ws=XLSX.utils.a
 function fileEmoji(type){
   if(!type) return '📎';
   if(type.includes('pdf')) return '📄';
+  if(type.includes('video')) return '🎬';
   if(type.includes('image')) return '🖼️';
+  if(type.includes('audio')) return '🎵';
   if(type.includes('word')||type.includes('document')) return '📝';
   if(type.includes('presentation')||type.includes('powerpoint')) return '📊';
   if(type.includes('sheet')||type.includes('excel')) return '📋';
