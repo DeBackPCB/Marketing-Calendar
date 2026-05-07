@@ -646,11 +646,11 @@ body{background:var(--cream);font-family:var(--font-body);font-weight:400;color:
     </div>
     <div class="form-row"><label>Notes</label><textarea id="f-notes" placeholder="Channel, audience, campaign details..."></textarea></div>
     <div class="form-row">
-      <label>Attachments (PDF, images, docs — max 25MB each)</label>
+      <label>Attachments (PDF, images, videos, docs — max 25MB each)</label>
       <div class="file-drop-zone" id="fileDropZone" onclick="document.getElementById('attachInput').click()" ondragover="fileDragOver(event)" ondragleave="fileDragLeave()" ondrop="fileDrop(event)">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
         <p><strong>Click to attach</strong> or drag and drop &mdash; up to 25MB each</p>
-        <input type="file" id="attachInput" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.html,.htm" onchange="handleAttachSelect(event)"/>
+        <input type="file" id="attachInput" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.html,.htm,.mp4,.mov,.webm,.ogg,.m4v,.avi,.mkv" onchange="handleAttachSelect(event)"/>
       </div>
       <div class="pending-files" id="pendingFiles"></div>
     </div>
@@ -747,7 +747,7 @@ body{background:var(--cream);font-family:var(--font-body);font-weight:400;color:
       <div class="file-drop-zone" id="salesFileDropZone" onclick="document.getElementById('salesAttachInput').click()" ondragover="fileDragOver2(event)" ondragleave="fileDragLeave2()" ondrop="fileDrop2(event)">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
         <p><strong>Click to attach</strong> or drag and drop &mdash; up to 25MB each</p>
-        <input type="file" id="salesAttachInput" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.ppt,.pptx,.xls,.xlsx" onchange="handleSalesAttach(event)"/>
+        <input type="file" id="salesAttachInput" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp4,.mov,.webm,.ogg,.m4v" onchange="handleSalesAttach(event)"/>
       </div>
       <div class="pending-files" id="salesPendingFiles"></div>
     </div>
@@ -858,6 +858,76 @@ const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 // Auth state
 let currentUser=null, currentRole=null, currentName=null, accessToken=null, isSalesPreview=false;
 let allUsers=[];
+
+// ════ SUPABASE STORAGE (binary uploads) ═══════════
+const STORAGE_BUCKET='event-attachments';
+function sbStoragePublicUrl(path){
+  return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
+}
+function _safeName(n){return (n||'file').replace(/[^a-zA-Z0-9._-]+/g,'_').slice(0,120);}
+async function sbUploadFile(file, _retry=false){
+  const path=`attachments/${uid()}-${_safeName(file.name)}`;
+  const res=await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${path}`,{
+    method:'POST',
+    headers:{
+      'apikey':SUPABASE_KEY,
+      'Authorization':'Bearer '+(accessToken||SUPABASE_KEY),
+      'Content-Type':file.type||'application/octet-stream',
+      'x-upsert':'true'
+    },
+    body:file
+  });
+  if(res.status===401 && !_retry){
+    const refreshed=await restoreSession();
+    if(refreshed) return sbUploadFile(file,true);
+    throw new Error('Session expired. Please sign in again.');
+  }
+  if(!res.ok){
+    const e=await res.json().catch(()=>({}));
+    const msg=e?.message||e?.error||res.statusText||'';
+    if(res.status===404||/bucket.*not.*found/i.test(msg)){
+      throw new Error(`Storage bucket "${STORAGE_BUCKET}" not found. Ask an admin to create a public bucket named "${STORAGE_BUCKET}" in Supabase.`);
+    }
+    throw new Error(`Upload failed (${res.status}): ${msg}`);
+  }
+  return {path, url:sbStoragePublicUrl(path)};
+}
+async function sbDeleteFile(path){
+  if(!path) return;
+  try{
+    await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${path}`,{
+      method:'DELETE',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+(accessToken||SUPABASE_KEY)}
+    });
+  }catch(e){console.warn('Storage delete failed:',e);}
+}
+// Convert a base64 dataUrl to a File for re-upload (legacy migration)
+function _dataUrlToFile(dataUrl,name,type){
+  const base64=dataUrl.split(',')[1]||'';
+  const binary=atob(base64);
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  return new File([bytes], name, {type:type||(dataUrl.split(';')[0].replace('data:',''))||'application/octet-stream'});
+}
+// Replace any legacy {dataUrl} attachments with {path,url} by uploading them
+async function migrateLegacyAttachments(attachments){
+  if(!Array.isArray(attachments)||!attachments.length) return attachments||[];
+  const out=[];
+  for(const a of attachments){
+    if(a&&a.url&&a.path){ out.push({name:a.name,size:a.size,type:a.type,path:a.path,url:a.url}); continue; }
+    if(a&&a.dataUrl){
+      try{
+        const f=_dataUrlToFile(a.dataUrl,a.name,a.type);
+        const up=await sbUploadFile(f);
+        out.push({name:a.name,size:a.size||f.size,type:a.type||f.type,path:up.path,url:up.url});
+      }catch(err){
+        console.error('Legacy attachment migration failed:',err);
+        throw err;
+      }
+    } else if(a){ out.push(a); }
+  }
+  return out;
+}
 
 // Generic Supabase REST helper (uses session token when available)
 async function sbFetch(method, path, body=null, _retry=false){
@@ -1044,15 +1114,65 @@ function eventToRow(e){
   };
 }
 
-// Load all events from Supabase
+// Columns excluding attachments_json — fetched on-demand to avoid statement timeouts
+// when legacy events still have multi-MB base64 blobs in that column.
+const EVENT_LIGHT_COLS='id,title,event_type,start_date,end_date,run_date,status,priority,notes,shared_with_sales,sales_submitted,comments_json';
+
+// Load all events from Supabase (without attachments_json — hydrated lazily)
 async function loadEvents(){
-  const data=await sbFetch('GET','/rest/v1/events?select=*&order=start_date.asc');
-  return (data||[]).map(rowToEvent);
+  const data=await sbFetch('GET',`/rest/v1/events?select=${EVENT_LIGHT_COLS}&order=start_date.asc`);
+  const list=(data||[]).map(r=>{
+    const ev=rowToEvent({...r,attachments_json:null});
+    ev._attachmentsLoaded=false;
+    return ev;
+  });
+  hydrateAttachmentsAsync(list);
+  return list;
+}
+
+// Background-load attachments_json for each event one row at a time.
+// Per-row fetches are tiny in CPU even if they're MBs large, so they don't trip
+// the statement timeout the way a bulk SELECT does.
+async function hydrateAttachmentsAsync(list){
+  for(const e of list){
+    if(e._attachmentsLoaded) continue;
+    try{
+      const rows=await sbFetch('GET',`/rest/v1/events?id=eq.${e.id}&select=attachments_json`);
+      const r=rows&&rows[0];
+      let arr=[]; try{ if(r&&r.attachments_json) arr=JSON.parse(r.attachments_json); }catch(_){}
+      e.attachments=arr;
+      e._attachmentsLoaded=true;
+    }catch(err){
+      console.warn('Attachment hydrate failed for',e.id,err);
+      e._attachmentsLoaded=true; // give up so we don't loop on it
+    }
+  }
+  if(typeof render==='function') try{render();}catch(_){}
+}
+
+// Ensure a single event's attachments are loaded before edit/delete operations
+// that would otherwise overwrite the attachments array.
+async function ensureAttachments(e){
+  if(!e||e._attachmentsLoaded) return;
+  try{
+    const rows=await sbFetch('GET',`/rest/v1/events?id=eq.${e.id}&select=attachments_json`);
+    const r=rows&&rows[0];
+    let arr=[]; try{ if(r&&r.attachments_json) arr=JSON.parse(r.attachments_json); }catch(_){}
+    e.attachments=arr;
+    e._attachmentsLoaded=true;
+  }catch(err){
+    console.warn('ensureAttachments failed:',err);
+    throw err;
+  }
 }
 
 // Save (upsert) a single event to Supabase
 async function saveE(eventToSave){
   try{
+    // Migrate any legacy base64 attachments to Supabase Storage before saving
+    if(Array.isArray(eventToSave.attachments)&&eventToSave.attachments.some(a=>a&&a.dataUrl&&!a.url)){
+      eventToSave.attachments=await migrateLegacyAttachments(eventToSave.attachments);
+    }
     // Try to update first; if no rows matched, insert
     const row=eventToRow(eventToSave);
     const updateRes=await sbFetch('PATCH',`/rest/v1/events?id=eq.${eventToSave.id}`,row);
@@ -1587,7 +1707,7 @@ function salesCard(e,today){
   const isPast=rd<today&&e.status==='Completed';
   const endFmt=e.endDate?new Date(e.endDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
   const startFmt=new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  const fileIcons=(e.attachments&&e.attachments.length)?e.attachments.map((a,i)=>`<div class="file-icon-chip" onclick="event.stopPropagation();openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0},'${e.id}',${i})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join(''):'';
+  const fileIcons=(e.attachments&&e.attachments.length)?e.attachments.map((a,i)=>`<div class="file-icon-chip" onclick="event.stopPropagation();openFile('${a.url||a.dataUrl}','${esc(a.name)}',${a.size||0},'${e.id}',${i})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join(''):'';
   const submitter=getSubmitter(e.notes);
   return `<div class="sales-card ${isPast?'past':''}" style="border-left:4px solid ${c}" onclick="openDetail('${e.id}')">
     <div class="date-block"><div class="date-month">${mon}</div><div class="date-day">${day}</div></div>
@@ -1807,7 +1927,7 @@ function openDetail(id){
     ${e.notes?`<div class="detail-row"><div class="detail-icon" style="background:#f5f0ea"><svg fill="none" viewBox="0 0 24 24" stroke="#a0714f" stroke-width="2"><path stroke-linecap="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg></div><div><div class="detail-label">Notes</div><div class="detail-value">${e.notes}</div></div></div>`:''}
     <div class="detail-row"><div class="detail-icon" style="background:#fdecea"><svg fill="none" viewBox="0 0 24 24" stroke="#c8102e" stroke-width="2"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg></div>
     <div style="flex:1"><div class="detail-label">Files &amp; Attachments</div>
-      ${e.attachments&&e.attachments.length?`<div class="file-icons-row" style="margin-top:8px;">${e.attachments.map((a,i)=>`<div class="file-icon-chip" onclick="openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0},'${e.id}',${i})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join('')}</div>`:'<div class="no-attach">No files attached</div>'}
+      ${e.attachments&&e.attachments.length?`<div class="file-icons-row" style="margin-top:8px;">${e.attachments.map((a,i)=>`<div class="file-icon-chip" onclick="openFile('${a.url||a.dataUrl}','${esc(a.name)}',${a.size||0},'${e.id}',${i})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join('')}</div>`:'<div class="no-attach">No files attached</div>'}
     </div></div>
     ${commentsHTML(e)}
     ${e.salesSubmitted&&getSubmitter(e.notes)===(currentName||(currentUser?.email?.split('@')[0]||''))?`
@@ -1839,7 +1959,7 @@ function openMgrDetail(id){
     ${e.notes?`<div class="detail-row"><div class="detail-icon" style="background:#f5f0ea"><svg fill="none" viewBox="0 0 24 24" stroke="#a0714f" stroke-width="2"><path stroke-linecap="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg></div><div><div class="detail-label">Notes</div><div class="detail-value">${e.notes}</div></div></div>`:''}
     <div class="detail-row"><div class="detail-icon" style="background:#fdecea"><svg fill="none" viewBox="0 0 24 24" stroke="#c8102e" stroke-width="2"><path stroke-linecap="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg></div>
     <div style="flex:1"><div class="detail-label">Files &amp; Attachments</div>
-      ${e.attachments&&e.attachments.length?`<div class="file-icons-row" style="margin-top:8px;">${e.attachments.map((a,i)=>`<div class="file-icon-chip" onclick="openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0},'${e.id}',${i})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join('')}</div>`:'<div class="no-attach">No files attached</div>'}
+      ${e.attachments&&e.attachments.length?`<div class="file-icons-row" style="margin-top:8px;">${e.attachments.map((a,i)=>`<div class="file-icon-chip" onclick="openFile('${a.url||a.dataUrl}','${esc(a.name)}',${a.size||0},'${e.id}',${i})" title="${a.name}"><span class="fi-icon">${fileEmoji(a.type)}</span><span class="fi-name">${a.name}</span></div>`).join('')}</div>`:'<div class="no-attach">No files attached</div>'}
     </div></div>
     ${commentsHTML(e)}
     <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
@@ -1864,33 +1984,51 @@ async function deleteEvent(id){
 }
 async function delAttach(eid,idx){
   const e=events.find(x=>x.id===eid);
-  if(e){e.attachments.splice(idx,1);await saveE(e);renderList();}
+  if(!e) return;
+  if(!e._attachmentsLoaded){
+    try{ await ensureAttachments(e); }catch(err){ alert('Could not load attachments. Try again.'); return; }
+  }
+  const a=e.attachments[idx];
+  if(a&&a.path) sbDeleteFile(a.path);
+  e.attachments.splice(idx,1);
+  await saveE(e);renderList();
 }
-function previewFile(dataUrl,name,size){
+function previewFile(src,name,size){
   const ext=(name.split('.').pop()||'').toLowerCase();
+  const isData=typeof src==='string'&&src.startsWith('data:');
+  const mimeFromSrc=isData?src.split(';')[0].replace('data:',''):'';
   const isImage=['png','jpg','jpeg','gif','webp','bmp','svg'].includes(ext);
   const isPdf=ext==='pdf';
   const isHtml=['html','htm'].includes(ext);
-  document.getElementById('prev-icon').textContent=fileEmoji(dataUrl.split(';')[0].replace('data:',''));
+  const isVideo=['mp4','webm','ogg','ogv','mov','m4v','avi','mkv'].includes(ext)||mimeFromSrc.startsWith('video/');
+  const isAudio=['mp3','wav','m4a','aac','flac'].includes(ext)||mimeFromSrc.startsWith('audio/');
+  document.getElementById('prev-icon').textContent=fileEmoji(mimeFromSrc||ext);
   document.getElementById('prev-name').textContent=name;
   document.getElementById('prev-size').textContent=size?fmtB(size):'';
   const dlBtn=document.getElementById('prev-dl-btn');
-  dlBtn.onclick=()=>{const a=document.createElement('a');a.href=dataUrl;a.download=name;a.click();};
+  dlBtn.onclick=()=>{const a=document.createElement('a');a.href=src;a.download=name;a.target='_blank';a.click();};
   const body=document.getElementById('prev-body');
+  // Helper: convert legacy base64 data URL to a Blob URL (needed for iframe-rendered types)
+  const toBlobUrl=(mime)=>{
+    const base64=src.split(',')[1]||'';
+    const binary=atob(base64);
+    const bytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+    const blob=new Blob([bytes],{type:mime});
+    const u=URL.createObjectURL(blob);
+    document.getElementById('previewOverlay')._blobUrl=u;
+    return u;
+  };
   if(isImage){
-    body.innerHTML=`<img src="${dataUrl}" alt="${name}" style="padding:16px;"/>`;
+    body.innerHTML=`<img src="${src}" alt="${name}" style="padding:16px;"/>`;
+  } else if(isVideo){
+    body.innerHTML=`<video src="${src}" controls playsinline style="display:block;max-width:100%;max-height:80vh;margin:0 auto;background:#000;"></video>`;
+  } else if(isAudio){
+    body.innerHTML=`<div style="padding:32px;text-align:center;"><div style="font-size:3rem;margin-bottom:12px;">🎵</div><audio src="${src}" controls style="width:100%;max-width:480px;"></audio></div>`;
   } else if(isPdf){
-    // Convert base64 dataUrl to Blob URL — browsers block base64 PDFs in iframes
     try{
-      const base64=dataUrl.split(',')[1];
-      const binary=atob(base64);
-      const bytes=new Uint8Array(binary.length);
-      for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
-      const blob=new Blob([bytes],{type:'application/pdf'});
-      const blobUrl=URL.createObjectURL(blob);
-      body.innerHTML=`<iframe src="${blobUrl}" title="${name}" style="width:100%;height:80vh;border:none;display:block;"></iframe>`;
-      // Revoke blob URL when modal closes to free memory
-      document.getElementById('previewOverlay')._blobUrl=blobUrl;
+      const url=isData?toBlobUrl('application/pdf'):src;
+      body.innerHTML=`<iframe src="${url}" title="${name}" style="width:100%;height:80vh;border:none;display:block;"></iframe>`;
     }catch(err){
       body.innerHTML=`<div class="preview-unsupported">
         <div class="pu-icon">📄</div>
@@ -1904,16 +2042,14 @@ function previewFile(dataUrl,name,size){
     }
   } else if(isHtml){
     try{
-      const blob=new Blob([atob(dataUrl.split(',')[1])],{type:'text/html'});
-      const blobUrl=URL.createObjectURL(blob);
-      body.innerHTML=`<iframe src="${blobUrl}" title="${name}" style="width:100%;height:80vh;border:none;display:block;"></iframe>`;
-      document.getElementById('previewOverlay')._blobUrl=blobUrl;
+      const url=isData?toBlobUrl('text/html'):src;
+      body.innerHTML=`<iframe src="${url}" title="${name}" style="width:100%;height:80vh;border:none;display:block;"></iframe>`;
     }catch(err){
       body.innerHTML=`<div class="preview-unsupported"><div class="pu-icon">🌐</div><h3>${name}</h3><p>Could not render HTML file.</p><button class="pu-dl" onclick="document.getElementById('prev-dl-btn').click()">Download ${name}</button></div>`;
     }
   } else {
     body.innerHTML=`<div class="preview-unsupported">
-      <div class="pu-icon">${fileEmoji(dataUrl.split(';')[0].replace('data:',''))}</div>
+      <div class="pu-icon">${fileEmoji(mimeFromSrc||ext)}</div>
       <h3>${name}</h3>
       <p>This file type can't be previewed in the browser.<br/>Download it to open with the appropriate app.</p>
       <button class="pu-dl" onclick="document.getElementById('prev-dl-btn').click()">
@@ -1958,12 +2094,16 @@ function cycleAttach(dir){
   if(_previewAttachments.length<2) return;
   _previewIdx=(_previewIdx+dir+_previewAttachments.length)%_previewAttachments.length;
   const a=_previewAttachments[_previewIdx];
-  previewFile(a.dataUrl,a.name,a.size||0);
+  previewFile(a.url||a.dataUrl,a.name,a.size||0);
   document.getElementById('prev-counter').textContent=`${_previewIdx+1} / ${_previewAttachments.length}`;
 }
 
-function editEvent(id){
+async function editEvent(id){
   const e=events.find(x=>x.id===id);if(!e)return;
+  if(!e._attachmentsLoaded){
+    try{ await ensureAttachments(e); }
+    catch(err){ alert('Could not load this event’s attachments. Try again in a moment.'); return; }
+  }
   editingId=id;pendingAttach=[...(e.attachments||[])];
   fillTypes(e.type);
   document.getElementById('f-title').value=e.title;
@@ -1995,6 +2135,7 @@ function fillTypes(sel){document.getElementById('f-type').innerHTML=allTypes().m
 async function saveEvent(){
   const title=document.getElementById('f-title').value.trim(),date=document.getElementById('f-date').value;
   if(!title||!date){alert('Please fill in a title and date.');return;}
+  if(pendingAttach.some(a=>a.uploading)){alert('Please wait for attachment uploads to finish.');return;}
   const saveBtn=document.querySelector('#eventOverlay .btn-save');
   if(saveBtn){saveBtn.textContent='Saving...';saveBtn.disabled=true;}
   const rawNotes=document.getElementById('f-notes').value.trim();
@@ -2032,14 +2173,31 @@ function fileDragOver(e){e.preventDefault();document.getElementById('fileDropZon
 function fileDragLeave(){document.getElementById('fileDropZone').classList.remove('drag-over');}
 function fileDrop(e){e.preventDefault();fileDragLeave();[...e.dataTransfer.files].forEach(readFile);}
 function handleAttachSelect(e){[...e.target.files].forEach(readFile);e.target.value='';}
-function readFile(file){
+async function readFile(file){
   if(file.size>25*1024*1024){alert(`"${file.name}" exceeds 25MB.`);return;}
-  const r=new FileReader();
-  r.onload=ev=>{pendingAttach.push({name:file.name,size:file.size,type:file.type,dataUrl:ev.target.result});renderPending();};
-  r.readAsDataURL(file);
+  const placeholder={name:file.name,size:file.size,type:file.type,uploading:true,_tmpId:uid()};
+  pendingAttach.push(placeholder);renderPending();
+  try{
+    const up=await sbUploadFile(file);
+    const i=pendingAttach.indexOf(placeholder);
+    if(i>=0) pendingAttach[i]={name:file.name,size:file.size,type:file.type,path:up.path,url:up.url};
+    renderPending();
+  }catch(err){
+    pendingAttach=pendingAttach.filter(x=>x!==placeholder);
+    renderPending();
+    alert(`Upload failed for "${file.name}": ${err?.message||err}`);
+  }
+}
+function _pendingDelBtn(arrName,i){
+  return `<button class="pending-file-del" onclick="${arrName}DelAt(${i})"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg></button>`;
+}
+function pendingAttachDelAt(i){
+  const f=pendingAttach[i]; if(!f) return;
+  if(f.path) sbDeleteFile(f.path);
+  pendingAttach.splice(i,1); renderPending();
 }
 function renderPending(){
-  document.getElementById('pendingFiles').innerHTML=pendingAttach.map((f,i)=>`<div class="pending-file"><span class="pending-file-name">${f.name}</span><span class="pending-file-size">${fmtB(f.size)}</span><button class="pending-file-del" onclick="pendingAttach.splice(${i},1);renderPending()"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div>`).join('');
+  document.getElementById('pendingFiles').innerHTML=pendingAttach.map((f,i)=>`<div class="pending-file"><span class="pending-file-name">${f.name}${f.uploading?' <em style="color:var(--brown-light);font-style:normal">(uploading…)</em>':''}</span><span class="pending-file-size">${fmtB(f.size)}</span>${_pendingDelBtn('pendingAttach',i)}</div>`).join('');
 }
 
 // Categories
@@ -2269,7 +2427,9 @@ function downloadTemplate(){const wb=XLSX.utils.book_new();const ws=XLSX.utils.a
 function fileEmoji(type){
   if(!type) return '📎';
   if(type.includes('pdf')) return '📄';
+  if(type.includes('video')) return '🎬';
   if(type.includes('image')) return '🖼️';
+  if(type.includes('audio')) return '🎵';
   if(type.includes('word')||type.includes('document')) return '📝';
   if(type.includes('presentation')||type.includes('powerpoint')) return '📊';
   if(type.includes('sheet')||type.includes('excel')) return '📋';
@@ -2278,7 +2438,7 @@ function fileEmoji(type){
 function renderFileIcons(e,editable=false){
   if(!e.attachments||!e.attachments.length) return '';
   return e.attachments.map((a,i)=>`
-    <div class="file-icon-chip" onclick="openFile('${a.dataUrl}','${esc(a.name)}',${a.size||0},'${e.id}',${i})" title="${a.name}">
+    <div class="file-icon-chip" onclick="openFile('${a.url||a.dataUrl}','${esc(a.name)}',${a.size||0},'${e.id}',${i})" title="${a.name}">
       <span class="fi-icon">${fileEmoji(a.type)}</span>
       <span class="fi-name">${a.name}</span>
       ${editable?`<button class="fi-del" onclick="event.stopPropagation();delAttach('${e.id}',${i})" title="Remove">&#10005;</button>`:''}
@@ -2352,14 +2512,28 @@ function fileDragOver2(e){e.preventDefault();document.getElementById('salesFileD
 function fileDragLeave2(){document.getElementById('salesFileDropZone').classList.remove('drag-over');}
 function fileDrop2(e){e.preventDefault();fileDragLeave2();[...e.dataTransfer.files].forEach(readSalesFile);}
 function handleSalesAttach(e){[...e.target.files].forEach(readSalesFile);e.target.value='';}
-function readSalesFile(file){
+async function readSalesFile(file){
   if(file.size>25*1024*1024){alert(`"${file.name}" exceeds 25MB.`);return;}
-  const r=new FileReader();
-  r.onload=ev=>{salesPendingAttach.push({name:file.name,size:file.size,type:file.type,dataUrl:ev.target.result});renderSalesPending();};
-  r.readAsDataURL(file);
+  const placeholder={name:file.name,size:file.size,type:file.type,uploading:true,_tmpId:uid()};
+  salesPendingAttach.push(placeholder);renderSalesPending();
+  try{
+    const up=await sbUploadFile(file);
+    const i=salesPendingAttach.indexOf(placeholder);
+    if(i>=0) salesPendingAttach[i]={name:file.name,size:file.size,type:file.type,path:up.path,url:up.url};
+    renderSalesPending();
+  }catch(err){
+    salesPendingAttach=salesPendingAttach.filter(x=>x!==placeholder);
+    renderSalesPending();
+    alert(`Upload failed for "${file.name}": ${err?.message||err}`);
+  }
+}
+function salesPendingAttachDelAt(i){
+  const f=salesPendingAttach[i]; if(!f) return;
+  if(f.path) sbDeleteFile(f.path);
+  salesPendingAttach.splice(i,1); renderSalesPending();
 }
 function renderSalesPending(){
-  document.getElementById('salesPendingFiles').innerHTML=salesPendingAttach.map((f,i)=>`<div class="pending-file"><span class="pending-file-name">${f.name}</span><span class="pending-file-size">${fmtB(f.size)}</span><button class="pending-file-del" onclick="salesPendingAttach.splice(${i},1);renderSalesPending()"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div>`).join('');
+  document.getElementById('salesPendingFiles').innerHTML=salesPendingAttach.map((f,i)=>`<div class="pending-file"><span class="pending-file-name">${f.name}${f.uploading?' <em style="color:var(--brown-light);font-style:normal">(uploading…)</em>':''}</span><span class="pending-file-size">${fmtB(f.size)}</span>${_pendingDelBtn('salesPendingAttach',i)}</div>`).join('');
 }
 
 async function saveSalesItem(){
@@ -2367,6 +2541,7 @@ async function saveSalesItem(){
   if(btn.disabled)return;
   const title=document.getElementById('s-title').value.trim(),date=document.getElementById('s-date').value;
   if(!title||!date){alert('Please fill in a name and start date.');return;}
+  if(salesPendingAttach.some(a=>a.uploading)){alert('Please wait for attachment uploads to finish.');return;}
   btn.disabled=true;btn.textContent='Submitting…';
   const submitterName=currentName||(currentUser?.email?.split('@')[0]||'Sales');
   const baseNotes=document.getElementById('s-notes').value.trim();
