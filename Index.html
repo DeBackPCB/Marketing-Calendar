@@ -1758,6 +1758,7 @@ function previewFile(dataUrl,name,size){
   const ext=(name.split('.').pop()||'').toLowerCase();
   const isImage=['png','jpg','jpeg','gif','webp','bmp','svg'].includes(ext);
   const isPdf=ext==='pdf';
+  const isVideo=['mp4','webm','ogg','mov','m4v'].includes(ext);
   const isHtml=['html','htm'].includes(ext);
   document.getElementById('prev-icon').textContent=fileEmoji(dataUrl.split(';')[0].replace('data:',''));
   document.getElementById('prev-name').textContent=name;
@@ -1790,14 +1791,24 @@ function previewFile(dataUrl,name,size){
         </button>
       </div>`;
     }
+  } else if(isVideo){
+    body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;padding:16px;background:#000;min-height:300px;">
+      <video controls autoplay style="max-width:100%;max-height:75vh;outline:none;" src="${dataUrl}">
+        Your browser does not support this video format.
+      </video>
+    </div>`;
   } else if(isHtml){
     try{
-      const blob=new Blob([atob(dataUrl.split(',')[1])],{type:'text/html'});
+      const base64=dataUrl.split(',')[1];
+      const binary=atob(base64);
+      const bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+      const blob=new Blob([bytes],{type:'text/html'});
       const blobUrl=URL.createObjectURL(blob);
-      body.innerHTML=`<iframe src="${blobUrl}" title="${name}" style="width:100%;height:80vh;border:none;display:block;"></iframe>`;
+      body.innerHTML=`<iframe src="${blobUrl}" title="${name}" style="width:100%;height:80vh;border:none;display:block;background:#fff;"></iframe>`;
       document.getElementById('previewOverlay')._blobUrl=blobUrl;
     }catch(err){
-      body.innerHTML=`<div class="preview-unsupported"><div class="pu-icon">🌐</div><h3>${name}</h3><p>Could not render HTML file.</p><button class="pu-dl" onclick="document.getElementById('prev-dl-btn').click()">Download ${name}</button></div>`;
+      body.innerHTML=`<div class="preview-unsupported"><div class="pu-icon">🌐</div><h3>${name}</h3><p>Could not render this HTML file. Download it to view in a browser.</p><button class="pu-dl" onclick="document.getElementById('prev-dl-btn').click()"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>Download ${name}</button></div>`;
     }
   } else {
     body.innerHTML=`<div class="preview-unsupported">
@@ -1815,6 +1826,8 @@ function previewFile(dataUrl,name,size){
 function closePreview(){
   const overlay=document.getElementById('previewOverlay');
   overlay.classList.remove('open');
+  const vid=overlay.querySelector('video');
+  if(vid){vid.pause();vid.src='';}
   if(overlay._blobUrl){URL.revokeObjectURL(overlay._blobUrl);overlay._blobUrl=null;}
   document.getElementById('prev-body').innerHTML='';
 }
@@ -2158,6 +2171,8 @@ function fileEmoji(type){
   if(!type) return '📎';
   if(type.includes('pdf')) return '📄';
   if(type.includes('image')) return '🖼️';
+  if(type.includes('video')) return '🎬';
+  if(type.includes('html')) return '🌐';
   if(type.includes('word')||type.includes('document')) return '📝';
   if(type.includes('presentation')||type.includes('powerpoint')) return '📊';
   if(type.includes('sheet')||type.includes('excel')) return '📋';
