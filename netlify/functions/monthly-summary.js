@@ -5,9 +5,10 @@
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://mkyxbihqlbrmmvclgobc.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const RESEND_KEY   = process.env.RESEND_API_KEY;
+const SENDGRID_KEY = process.env.SENDGRID_API_KEY;
 const APP_URL      = process.env.APP_URL || 'https://pcb-marketing-calendar.netlify.app';
-const FROM_EMAIL   = process.env.FROM_EMAIL || 'Marketing Calendar <onboarding@resend.dev>';
+const FROM_EMAIL   = process.env.FROM_EMAIL || 'marketing@prairiecitybakery.com';
+const FROM_NAME    = process.env.FROM_NAME  || 'Prairie City Bakery';
 
 const LOGO = 'https://mcusercontent.com/b8b83227231f2f0e26759641f/images/f4d5c084-3240-de4a-6231-962425e66050.png';
 
@@ -130,8 +131,8 @@ a{text-decoration:none;}
 }
 
 exports.handler = async function() {
-  if (!SUPABASE_KEY || !RESEND_KEY) {
-    return { statusCode: 500, body: 'Missing SUPABASE_SERVICE_KEY or RESEND_API_KEY' };
+  if (!SUPABASE_KEY || !SENDGRID_KEY) {
+    return { statusCode: 500, body: 'Missing SUPABASE_SERVICE_KEY or SENDGRID_API_KEY' };
   }
 
   // Next month date range
@@ -159,14 +160,14 @@ exports.handler = async function() {
     if (!email) continue;
     const firstName = user.user_metadata?.full_name?.split(' ')[0] || email.split('@')[0];
     const html = buildEmailHtml(events, monthName, firstName);
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${SENDGRID_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: [email],
+        personalizations: [{ to: [{ email }] }],
+        from: { email: FROM_EMAIL, name: FROM_NAME },
         subject: `${monthName} Marketing Calendar Preview`,
-        html,
+        content: [{ type: 'text/html', value: html }],
       }),
     });
     if (res.ok) sent++;

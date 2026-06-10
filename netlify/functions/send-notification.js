@@ -1,8 +1,9 @@
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://mkyxbihqlbrmmvclgobc.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const RESEND_KEY   = process.env.RESEND_API_KEY;
-const FROM_EMAIL   = process.env.FROM_EMAIL || 'Marketing Calendar <onboarding@resend.dev>';
-const APP_URL      = process.env.APP_URL || 'https://pcb-marketing-calendar.netlify.app';
+const SUPABASE_URL  = process.env.SUPABASE_URL || 'https://mkyxbihqlbrmmvclgobc.supabase.co';
+const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY;
+const SENDGRID_KEY  = process.env.SENDGRID_API_KEY;
+const FROM_EMAIL    = process.env.FROM_EMAIL || 'marketing@prairiecitybakery.com';
+const FROM_NAME     = process.env.FROM_NAME  || 'Prairie City Bakery';
+const APP_URL       = process.env.APP_URL || 'https://pcb-marketing-calendar.netlify.app';
 
 const LOGO = 'https://mcusercontent.com/b8b83227231f2f0e26759641f/images/f4d5c084-3240-de4a-6231-962425e66050.png';
 
@@ -173,12 +174,18 @@ async function createNotification(userId, type, message, eventId) {
 }
 
 async function sendEmail(to, subject, html) {
-  if (!RESEND_KEY) return { error: 'No RESEND_API_KEY configured' };
-  const toArr = Array.isArray(to) ? to : [to];
-  const res = await fetch('https://api.resend.com/emails', {
+  if (!SENDGRID_KEY) return { error: 'No SENDGRID_API_KEY configured' };
+  const toArr = (Array.isArray(to) ? to : [to]).filter(Boolean);
+  if (!toArr.length) return { error: 'No recipients' };
+  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to: toArr, subject, html }),
+    headers: { 'Authorization': `Bearer ${SENDGRID_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      personalizations: [{ to: toArr.map(e => ({ email: e })) }],
+      from: { email: FROM_EMAIL, name: FROM_NAME },
+      subject,
+      content: [{ type: 'text/html', value: html }],
+    }),
   });
   return res.ok ? { ok: true } : { error: await res.text() };
 }
